@@ -1,3 +1,9 @@
+# v0.1.10
+## 09/29/2026
+
+1. [](#improved)
+    * The access line on consumer plugins' settings explains the scope in a few words, e.g. **with `drive.file` access (only files it creates)**, instead of a sentence.
+
 # v0.1.9
 ## 09/29/2026
 

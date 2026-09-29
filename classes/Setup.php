@@ -18,11 +18,11 @@ use Grav\Common\Grav;
 final class Setup
 {
     public const GUIDES = ['start-here', 'service-account', 'oauth', 'troubleshooting'];
-    /** What each Drive scope lets a plugin do, in words, for the notice on consumer plugins' settings pages. */
+    /** What each Drive scope lets a plugin do, as a few words for the notice on consumer plugins' settings pages. */
     public const SCOPE_MEANING = [
-        'https://www.googleapis.com/auth/drive.file' => 'it can see and change only the files and folders it creates itself; the rest of the Drive stays invisible to it',
-        'https://www.googleapis.com/auth/drive.readonly' => 'it can read every file the account can see, but can\'t change or delete anything',
-        'https://www.googleapis.com/auth/drive' => 'it can read and change every file the account can see, which it needs to use a folder you picked yourself',
+        'https://www.googleapis.com/auth/drive.file' => 'only files it creates',
+        'https://www.googleapis.com/auth/drive.readonly' => 'read-only, all files',
+        'https://www.googleapis.com/auth/drive' => 'all files it can see',
     ];
     /** When docs/setup/ was last checked against Google's console. Bump it whenever the guides are revised. */
     public const GUIDES_REVISED = '2026-09-29';
@@ -76,8 +76,7 @@ final class Setup
             foreach ($mine as $d) {
                 $scopes = self::scopeList($d['scopes']);
                 $row = current(array_filter($rows, static fn (array $r): bool => $r['name'] === $d['account']));
-                $lines[] = sprintf('Uses Google Drive account **%s** with %s access: %s', self::clean($d['account']), $scopes, self::verdict($row ?: null, $d['scopes']))
-                    . self::scopeMeaning($d['scopes']);
+                $lines[] = sprintf('Uses Google Drive account **%s** with %s access%s: %s', self::clean($d['account']), $scopes, self::scopeMeaning($d['scopes']), self::verdict($row ?: null, $d['scopes']));
             }
 
             return self::safe(implode("\n\n", $lines) . "\n\n" . $link);
@@ -607,25 +606,19 @@ final class Setup
         };
     }
 
-    /** @param string[] $scopes */
     /**
-     * "  \n`drive.file` is Google's name for this permission (a scope): it can …" — one
-     * line per known scope, empty for unknown ones. Pure.
+     * " (only files it creates)" for the scopes it knows, "" otherwise. Pure.
      *
      * @param string[] $scopes
      */
     public static function scopeMeaning(array $scopes): string
     {
-        $out = '';
-        foreach ($scopes as $s) {
-            if (isset(self::SCOPE_MEANING[$s])) {
-                $out .= "  \n`" . str_replace(self::SCOPE_PREFIX, '', $s) . "` is Google's name for this permission (a *scope*): " . self::SCOPE_MEANING[$s] . '.';
-            }
-        }
+        $words = array_values(array_filter(array_map(static fn (string $s): string => self::SCOPE_MEANING[$s] ?? '', $scopes)));
 
-        return $out;
+        return $words === [] ? '' : ' (' . implode('; ', $words) . ')';
     }
 
+    /** @param string[] $scopes */
     private static function scopeList(array $scopes): string
     {
         return implode(', ', array_map(static fn (string $s): string => '`' . self::clean(str_replace(self::SCOPE_PREFIX, '', $s)) . '`', $scopes)) ?: '(no scopes)';

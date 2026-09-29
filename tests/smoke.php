@@ -436,10 +436,9 @@ check(str_contains($guideJs, '__gdriveAccountPrefill') && str_contains($guideJs,
 check(!str_contains(Setup::guided(['kind' => '<b>x</b>']), '<b>'), 'guided() refuses a bad profile without echoing it');
 check(Setup::checklist() !== '' && Setup::whoUsesWhat() !== '', 'checklist() and whoUsesWhat() survive Grav not being booted');
 check(str_contains(Setup::consumerNotice('gdrive-images'), 'Set up Google Drive access'), 'consumerNotice() always points at the setup page');
-foreach (['drive.file', 'drive.readonly', 'drive'] as $short) {
-    $m = Setup::scopeMeaning(['https://www.googleapis.com/auth/' . $short]);
-    check(str_contains($m, "`{$short}` is Google's name for this permission (a *scope*)") && !str_contains($m, '<'), "scopeMeaning() explains {$short} in words");
-}
+check(Setup::scopeMeaning(['https://www.googleapis.com/auth/drive.file']) === ' (only files it creates)'
+    && Setup::scopeMeaning(['https://www.googleapis.com/auth/drive.readonly']) === ' (read-only, all files)'
+    && Setup::scopeMeaning(['https://www.googleapis.com/auth/drive']) === ' (all files it can see)', 'scopeMeaning() gives each Drive scope a terse parenthetical');
 check(Setup::scopeMeaning(['https://example.com/other']) === '', 'scopeMeaning() says nothing about a scope it does not know');
 
 // --- Every reason the library raises, and every Google reason the guide promises, has its Troubleshooting anchor.
