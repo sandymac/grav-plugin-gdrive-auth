@@ -186,7 +186,7 @@ class GdriveAccounts extends HTMLElement {
         try {
             const json = file ? await file.text() : pasted;
             this._data = await this._call('POST', '/gdrive/accounts', { name, type, json });
-            root.querySelector('form.add').reset();
+            root.querySelectorAll('.add input, .add textarea').forEach((el) => { el.value = ''; });
             this._syncType();
             say(type === 'oauth' ? `Added ${name}. Now click Connect on it.` : `Added ${name}. Share your folder with its email, then click Test.`, true);
             window.__GRAV_TOAST?.success?.(`Added ${name}`);
@@ -207,8 +207,8 @@ class GdriveAccounts extends HTMLElement {
     _renderShell() {
         this.shadowRoot.innerHTML = `<style>${STYLE}</style>
             <div class="list"></div>
-            <form class="add" novalidate>
-                <h3>Add account</h3>
+            <div class="add" role="group" aria-labelledby="add-h">
+                <h3 id="add-h">Add account</h3>
                 <p class="hint">Follow the <a href="#service_account">service account guide</a> or the
                     <a href="#oauth">OAuth guide</a> first; each ends with the JSON file to upload here.
                     Uploading under an existing name replaces its credential.</p>
@@ -237,12 +237,17 @@ class GdriveAccounts extends HTMLElement {
                     <textarea id="add-paste" name="paste" rows="4" spellcheck="false" autocomplete="off" placeholder="{ … }"></textarea>
                 </label>
                 <div class="row">
-                    <button type="submit" class="primary">Add account</button>
+                    <button type="button" class="primary add-go">Add account</button>
                     <span id="add-msg" class="note" role="status"></span>
                 </div>
-            </form>`;
+            </div>`;
         const root = this.shadowRoot;
-        root.querySelector('form.add').addEventListener('submit', (e) => this._add(e));
+        // A div, not a form: Admin2 renders fields inside its own form element, and the parser drops a nested one.
+        const add = root.querySelector('.add');
+        add.querySelector('.add-go').addEventListener('click', (e) => this._add(e));
+        add.addEventListener('keydown', (e) => { // Enter would otherwise submit Admin2's settings form
+            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') { e.preventDefault(); this._add(e); }
+        });
         root.querySelector('#add-type').addEventListener('change', () => this._syncType());
         root.querySelector('.copy').addEventListener('click', () => this._copy(this._data?.redirect_uri || ''));
         root.addEventListener('click', (e) => this._onLink(e));
@@ -258,7 +263,7 @@ class GdriveAccounts extends HTMLElement {
 
     _setAdding(on) {
         this._adding = on;
-        const btn = this.shadowRoot.querySelector('form.add button[type=submit]');
+        const btn = this.shadowRoot.querySelector('.add-go');
         btn.disabled = on;
         btn.textContent = on ? 'Adding…' : 'Add account';
     }
@@ -413,7 +418,7 @@ const STYLE = `
     :host { display: block; font-family: inherit; color: var(--foreground, #0f172a); }
     h3 { margin: 0; font-size: 1rem; font-weight: 600; }
     .list { display: grid; gap: 12px; margin-bottom: 20px; }
-    .acct, form.add {
+    .acct, .add {
         border: 1px solid var(--border, #e2e8f0); border-radius: var(--radius, 8px);
         background: var(--background, #fff); padding: 14px 16px;
     }
@@ -443,7 +448,7 @@ const STYLE = `
     }
     button.linkish { min-height: 0; padding: 0; border: 0; background: none; color: var(--primary, #4f46e5); text-decoration: underline; }
     a { color: var(--primary, #4f46e5); }
-    form.add { display: grid; gap: 12px; }
+    .add { display: grid; gap: 12px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     label { display: grid; gap: 4px; font-size: 13px; font-weight: 500; }
     input[type=text], select, textarea {

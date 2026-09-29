@@ -1,3 +1,9 @@
+# v0.1.1
+## 09/29/2026
+
+1. [](#bugfix)
+    * Accounts tab crashed in Admin2 ("Cannot read properties of null"): Admin2 renders fields inside its own `<form>`, so the nested add-account `<form>` was dropped by the HTML parser. It is a `div` now, Enter no longer submits the settings form, and smoke checks both.
+
 # v0.1.0
 ## unreleased
 

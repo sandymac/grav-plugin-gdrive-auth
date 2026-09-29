@@ -344,4 +344,13 @@ preg_match('/^version:\s*(\S+)/m', $blueprints, $bv);
 preg_match("/const VERSION = '([^']+)'/", (string) file_get_contents(__DIR__ . '/../gdrive.php'), $pv);
 check(($bv[1] ?? '') === ($pv[1] ?? 'missing'), sprintf('GdrivePlugin::VERSION (%s) matches blueprints.yaml (%s)', $pv[1] ?? 'missing', $bv[1] ?? 'missing'));
 
+// --- Admin2 renders custom fields inside its own <form>: a nested <form> is dropped by the
+// parser (the 0.1.0 crash), and an untyped <button> would submit the settings form.
+foreach (glob(__DIR__ . '/../admin-next/fields/*.js') ?: [] as $js) {
+    $src = (string) file_get_contents($js);
+    check(stripos($src, '<form') === false, basename($js) . ' has no <form> (Admin2 nests fields in its own form)');
+    preg_match_all('/<button\b[^>]*>/', $src, $buttons);
+    check(array_filter($buttons[0], static fn (string $b): bool => !str_contains($b, 'type="button"')) === [], basename($js) . ' types every <button> as type="button"');
+}
+
 echo "smoke: OK\n";
