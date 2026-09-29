@@ -1,3 +1,11 @@
+# v0.1.7
+## 09/29/2026
+
+1. [](#improved)
+    * Guided setup now pre-fills the **Add account** name and type when you follow its link to the Accounts tab.
+    * The **Start here** tab now comes first, with **Guided setup** second.
+    * OAuth account rows list **Connect**, **Test**, **Remove** in that order; **Test** is disabled until the account is connected.
+
 # v0.1.6
 ## 09/29/2026
 

@@ -118,7 +118,7 @@ final class Setup
         if ($md === false) {
             return '<p>The setup guide is missing from this install of the plugin.</p>';
         }
-        $md = self::render(self::intro($p, $tags) . "\n\n" . self::filterGuide($md, $tags) . "\n\n" . self::then($p['method'], $declarations), self::values());
+        $md = self::render(self::intro($p, $tags) . "\n\n" . self::filterGuide($md, $tags) . "\n\n" . self::then($p['method'], $declarations, self::suggestAccount($declarations, self::existingNames(), $p['method'])), self::values());
 
         return self::html($p['project'] !== '' ? self::withProject($md, $p['project']) : $md);
     }
@@ -444,6 +444,19 @@ final class Setup
         return $out;
     }
 
+    /**
+     * @internal
+     * @return string[] names of the accounts that exist (none if the registry can't load)
+     */
+    public static function existingNames(): array
+    {
+        try {
+            return Gdrive::accounts()->names();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
     /** @internal resolved user://data/gdrive */
     public static function dataDir(): string
     {
@@ -511,17 +524,31 @@ final class Setup
         return $how . "\n\nThese steps cover " . implode(' and ', $needs) . '. The full guides are on the other tabs.' . $project;
     }
 
-    /** @param array<int, array{plugin: string, account: string, scopes: string[]}> $declarations */
-    private static function then(string $method, array $declarations): string
+    /**
+     * The account name the Guided setup pre-fills: the first name plugins
+     * declared that doesn't exist yet, else the first declared, else a default
+     * per method. Only names matching Accounts::NAME are considered. Pure.
+     *
+     * @internal
+     * @param array<int, array{plugin: string, account: string, scopes: string[]}> $declarations
+     * @param string[] $existing
+     */
+    public static function suggestAccount(array $declarations, array $existing, string $method): string
     {
-        $names = array_values(array_unique(array_map(static fn (array $d): string => '**' . self::clean($d['account']) . '**', $declarations)));
-        $out = "### Then\n\n1. On the [Accounts](#accounts_tab) tab, add the account"
-            . ($names !== [] ? ' named ' . implode(' or ', $names) . ' (the name the plugins expect)' : '')
+        $names = array_values(array_filter(array_column($declarations, 'account'), static fn (string $n): bool => preg_match(Accounts::NAME, $n) === 1));
+
+        return current(array_diff($names, $existing)) ?: ($names[0] ?? ($method === 'sa' ? 'site' : 'personal'));
+    }
+
+    /** @param array<int, array{plugin: string, account: string, scopes: string[]}> $declarations */
+    private static function then(string $method, array $declarations, string $account): string
+    {
+        $out = "### Then\n\n1. On the [Accounts](#accounts_tab) tab, add an account named **" . self::clean($account) . '**'
             . ': choose **' . ($method === 'sa' ? 'Service account' : 'OAuth') . "** and upload the JSON file from above.\n"
             . '2. ' . ($method === 'sa' ? 'Click' : 'Click **Connect**, then click') . " **Test**. A ✘ links to its fix in [Troubleshooting](troubleshooting.md).\n"
             . "3. In each Drive plugin's settings, pick the account" . ($declarations === [] ? " by that name.\n" : ":\n");
         foreach ($declarations as $d) {
-            $out .= sprintf("   - **%s** uses **%s**\n", self::clean($d['plugin']), self::clean($d['account']));
+            $out .= sprintf("   - **%s** is set to an account named **%s**. Name yours the same, or change it in that plugin's settings.\n", self::clean($d['plugin']), self::clean($d['account']));
         }
 
         return $out;

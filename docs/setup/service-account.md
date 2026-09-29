@@ -84,7 +84,7 @@ If you skip this, **Test** fails with
 
 ### 5. Upload the key here
 
-1. Open the **Accounts** tab on this page.
+1. Open the [Accounts](#accounts_tab) tab on this page.
 2. Under **Add account**, type a name (for example `site`; it's how other
    plugins refer to this account), choose **Service account**, and choose the
    `.json` file (or paste its contents).

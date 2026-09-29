@@ -398,6 +398,17 @@ check(!str_contains($guided(['kind' => 'gmail']), 'already open the project'), '
 foreach (['oauth', 'service-account'] as $full) {
     check(!str_contains(Setup::guide($full), 'already open the project'), "the full {$full} guide never claims its links open a project (no project there)");
 }
+$decls = [['plugin' => 'a', 'account' => 'backup', 'scopes' => []], ['plugin' => 'b', 'account' => 'gallery', 'scopes' => []]];
+check(Setup::suggestAccount($decls, ['backup'], 'oauth') === 'gallery', 'suggestAccount(): first declared name that does not exist yet');
+check(Setup::suggestAccount($decls, ['backup', 'gallery'], 'oauth') === 'backup', 'suggestAccount(): all exist → first declared');
+check(Setup::suggestAccount([], [], 'oauth') === 'personal' && Setup::suggestAccount([], ['personal'], 'sa') === 'site', 'suggestAccount(): defaults per method');
+check(Setup::suggestAccount([['plugin' => 'x', 'account' => '../Bad', 'scopes' => []], ['plugin' => 'y', 'account' => 'ok', 'scopes' => []]], [], 'sa') === 'ok' && Setup::suggestAccount([['plugin' => 'x', 'account' => 'Bad name', 'scopes' => []]], [], 'sa') === 'site', 'suggestAccount(): only valid account names come back');
+check(str_contains($guided(['kind' => 'gmail']), 'add an account named **personal**') && str_contains(Setup::guided(['kind' => 'gmail']), 'personal'), 'guided() names the suggested account in the Then section');
+$acctJs = (string) file_get_contents(__DIR__ . '/../admin-next/fields/gdrive-accounts.js');
+$row = substr($acctJs, (int) strpos($acctJs, '_rowHtml(a) {'));
+check(($c = strpos($row, 'data-act="connect"')) !== false && ($t = strpos($row, 'data-act="test"')) !== false && ($r = strpos($row, 'data-act="remove"')) !== false && $c < $t && $t < $r, 'account rows render Connect, Test, Remove in that order');
+$guideJs = (string) file_get_contents(__DIR__ . '/../admin-next/fields/gdrive-guide.js');
+check(str_contains($guideJs, '__gdriveAccountPrefill') && str_contains($guideJs, "'gdrive-account-prefill'") && str_contains($acctJs, 'delete window.__gdriveAccountPrefill') && str_contains($acctJs, "removeEventListener('gdrive-account-prefill'"), 'the prefill is handed over by window global and event, and consumed and unsubscribed');
 check(!str_contains(Setup::guided(['kind' => '<b>x</b>']), '<b>'), 'guided() refuses a bad profile without echoing it');
 check(Setup::checklist() !== '' && Setup::whoUsesWhat() !== '', 'checklist() and whoUsesWhat() survive Grav not being booted');
 check(str_contains(Setup::consumerNotice('gdrive-images'), 'Set up Google Drive access'), 'consumerNotice() always points at the setup page');

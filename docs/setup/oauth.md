@@ -128,7 +128,7 @@ Treat this file like a password: don't email it or commit it anywhere.
 
 ### 6. Upload the client JSON here and click Connect
 
-1. Open the **Accounts** tab on this page.
+1. Open the [Accounts](#accounts_tab) tab on this page.
 2. Under **Add account**, type a name (for example `personal`; other plugins
    refer to the account by it), choose **OAuth**, choose the `client_secret_…json`
    file (or paste its contents), and click **Add account**.

@@ -105,7 +105,7 @@ final class Api extends AbstractApiController
         });
     }
 
-    /** GET /gdrive/guide?kind=&method=&shared_drive=&admin=&project=: the Guided setup steps as HTML (422 on anything off the whitelist). */
+    /** GET /gdrive/guide?kind=&method=&shared_drive=&admin=&project=: the Guided setup steps as HTML plus the suggested account name (422 on anything off the whitelist). */
     public function guide(ServerRequestInterface $request): ResponseInterface
     {
         $this->requirePermission($request, self::PERMISSION);
@@ -119,6 +119,7 @@ final class Api extends AbstractApiController
             'html' => Setup::guided($profile),
             'method' => $profile['method'],
             'tags' => Setup::guideTags($profile, Gdrive::scopes()),
+            'account' => Setup::suggestAccount(Gdrive::scopes(), Setup::existingNames(), $profile['method']),
         ]);
     }
 

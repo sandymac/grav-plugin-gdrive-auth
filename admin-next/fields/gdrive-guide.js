@@ -30,6 +30,7 @@ class GdriveGuide extends HTMLElement {
         this._state = load();
         this._timer = null;
         this._seq = 0;
+        this._account = ''; // the server's suggested account name, for the Accounts tab prefill
     }
 
     set field(v) { this._field = v; }
@@ -92,7 +93,9 @@ class GdriveGuide extends HTMLElement {
         out.setAttribute('aria-busy', 'true');
         let html;
         try {
-            html = (await this._call(`/gdrive/guide?${this._query()}`)).html || '';
+            const data = await this._call(`/gdrive/guide?${this._query()}`);
+            html = data.html || '';
+            this._account = String(data.account || '');
         } catch (e) {
             const text = e.status === 404
                 ? 'The Google Drive Auth plugin’s API isn’t available. Enable the plugin, save, and reload this page.'
@@ -209,6 +212,13 @@ class GdriveGuide extends HTMLElement {
             : '';
     }
 
+    /** Hands the Accounts tab's Add account form a name and type, both ways: it may mount only after the tab shows. */
+    _prefill() {
+        const detail = { name: this._account, type: this._method() === 'sa' ? 'service_account' : 'oauth' };
+        window.__gdriveAccountPrefill = detail;
+        window.dispatchEvent(new CustomEvent('gdrive-account-prefill', { detail }));
+    }
+
     /** Links to #<tab> or #<tab>--<anchor>: switch tab through the hash (Admin2's tabs follow it), then scroll to the entry. */
     _onLink(e) {
         const a = e.composedPath().find((n) => n instanceof HTMLAnchorElement);
@@ -216,6 +226,7 @@ class GdriveGuide extends HTMLElement {
         if (!href.startsWith('#')) return;
         e.preventDefault();
         const [tab, anchor] = href.slice(1).split('--');
+        if (tab === 'accounts_tab') this._prefill();
         window.location.hash = tab;
         if (anchor) setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 250);
     }

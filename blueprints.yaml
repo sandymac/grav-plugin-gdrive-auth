@@ -1,8 +1,8 @@
 name: Google Drive Auth
 slug: gdrive
 type: plugin
-version: 0.1.6
-description: Shared Google Drive library for Grav plugins. Service-account and OAuth (bring your own client) accounts, a thin Drive v3 client, and the OAuth callback. No Composer dependencies.
+version: 0.1.7
+description: Google sign-in for the Google Drive plugin family. Connect a Google account once, with OAuth (your own Google Cloud client) or a service account, and every Drive plugin on the site uses it. Includes guided setup, the Drive client and the OAuth callback. No Composer dependencies.
 icon: google
 author:
   name: Sandy McArthur
@@ -37,21 +37,6 @@ form:
     tabs:
       type: tabs
       fields:
-        guided:
-          type: tab
-          title: Guided setup
-          fields:
-            guided_intro:
-              type: display
-              style: vertical
-              markdown: true
-              content: 'Answer a few questions and see only the steps you need. The full, unabridged guides are on the other tabs: [Start here](#start), [OAuth](#oauth), [Service account](#service_account) and [Troubleshooting](#troubleshooting).'
-            # Display only, like account_manager: it renders GET /api/v1/gdrive/guide and never sends a form value.
-            guided_setup:
-              type: gdrive-guide
-              validate:
-                ignore: true
-
         start:
           type: tab
           title: Start here
@@ -76,6 +61,21 @@ form:
               style: vertical
               markdown: true
               data-content@: '\Grav\Plugin\Gdrive\Setup::whoUsesWhat'
+
+        guided:
+          type: tab
+          title: Guided setup
+          fields:
+            guided_intro:
+              type: display
+              style: vertical
+              markdown: true
+              content: 'Answer a few questions and see only the steps you need. The full, unabridged guides are on the other tabs: [Start here](#start), [OAuth](#oauth), [Service account](#service_account) and [Troubleshooting](#troubleshooting).'
+            # Display only, like account_manager: it renders GET /api/v1/gdrive/guide and never sends a form value.
+            guided_setup:
+              type: gdrive-guide
+              validate:
+                ignore: true
 
         accounts_tab:
           type: tab

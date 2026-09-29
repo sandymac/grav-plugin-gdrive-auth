@@ -1,11 +1,12 @@
 # Google Drive Auth for Grav
 
-The shared Google Drive library for Grav 2 plugins. It manages Google
-accounts (service accounts, and OAuth user accounts through your own Google
-Cloud "Web application" client), gives other plugins a thin Drive v3 client,
+Google sign-in for the Grav 2 Google Drive plugin family. You connect a Google
+account once, as an OAuth user account through your own Google Cloud "Web
+application" client (most people) or as a service account, and every Drive
+plugin on the site uses it. It also gives those plugins a thin Drive v3 client
 and handles the OAuth callback. Its settings page in Admin2 (Plugins → Google
-Drive) manages the accounts and carries the setup guides. Its only front-end
-route is that callback, and it has no Composer dependencies.
+Drive Auth) manages the accounts and carries the guided setup and full guides.
+Its only front-end route is that callback, and it has no Composer dependencies.
 
 Plugins that use it: [gdrive-images](https://github.com/sandymac/grav-plugin-gdrive-images)
 (photo galleries) and [gdrive-backup](https://github.com/sandymac/grav-plugin-gdrive-backup)
@@ -15,8 +16,8 @@ Requires PHP 8.3+ and Grav 2.0.23+.
 
 ## Setup
 
-Open **Plugins → Google Drive Auth** in Admin2 and start on the **Guided
-setup** tab: answer a few questions (which Google account, personal or
+Open **Plugins → Google Drive Auth** in Admin2 and read **Start here**
+(OAuth or service account?), then go to the **Guided setup** tab: answer a few questions (which Google account, personal or
 Workspace, and so on) and it shows only the steps you need, with the console
 links opening your Cloud project. Most people want OAuth with their own Google
 account. The other tabs have the full guides, with this site's redirect URI,
@@ -160,7 +161,7 @@ All need `api.gdrive.manage`. Success is `{"data": …}`; errors are
 | `DELETE /gdrive/accounts/{name}` | Revokes (OAuth), deletes the files, drops it from config. The list |
 | `POST /gdrive/accounts/{name}/test` | A real `about.get` with the declared scopes; stored in `user/data/gdrive/<name>.test.json`. `{result, …list}` |
 | `POST /gdrive/accounts/{name}/connect` | `{url}`: Google's consent URL for the declared ∪ granted scopes (OAuth only) |
-| `GET /gdrive/guide?kind=&method=&shared_drive=&admin=&project=` | `{html, method, tags}`: the Guided setup steps. `kind` is `gmail` (personal) or `workspace`; `method` `oauth` (default) or `sa`; `shared_drive` `yes\|no\|unsure`; `admin` `yes\|no`; `project` a Cloud project ID. Anything else is a 422 |
+| `GET /gdrive/guide?kind=&method=&shared_drive=&admin=&project=` | `{html, method, tags, account}`: the Guided setup steps and the suggested account name. `kind` is `gmail` (personal) or `workspace`; `method` `oauth` (default) or `sa`; `shared_drive` `yes\|no\|unsure`; `admin` `yes\|no`; `project` a Cloud project ID. Anything else is a 422 |
 
 ### The transport test seam
 

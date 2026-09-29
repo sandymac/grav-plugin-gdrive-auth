@@ -30,6 +30,8 @@ class GdriveAccounts extends HTMLElement {
         this._adding = false;
         this._popupTimer = null;
         this._onMessage = this._onMessage.bind(this);
+        this._onPrefill = (e) => this._applyPrefill(e.detail);
+        this._prefilledName = null; // the name we filled in, so a later prefill may replace it but never the user's typing
     }
 
     set field(v) { this._field = v; }
@@ -39,12 +41,18 @@ class GdriveAccounts extends HTMLElement {
 
     connectedCallback() {
         window.addEventListener('message', this._onMessage);
+        window.addEventListener('gdrive-account-prefill', this._onPrefill);
         this._renderShell();
         this._load();
+        // The Guided setup tab may have clicked before this tab's component was mounted.
+        const pending = window.__gdriveAccountPrefill;
+        delete window.__gdriveAccountPrefill;
+        if (pending) this._applyPrefill(pending);
     }
 
     disconnectedCallback() {
         window.removeEventListener('message', this._onMessage);
+        window.removeEventListener('gdrive-account-prefill', this._onPrefill);
         clearInterval(this._popupTimer);
     }
 
@@ -191,7 +199,7 @@ class GdriveAccounts extends HTMLElement {
             say(type === 'oauth' ? `Added ${name}. Now click Connect on it.` : `Added ${name}. Share your folder with its email, then click Test.`, true);
             window.__GRAV_TOAST?.success?.(`Added ${name}`);
             this._renderList();
-            this.shadowRoot.querySelector(`[data-key="${cssEsc(`test:${name}`)}"]`)?.focus();
+            this.shadowRoot.querySelector(`[data-key="${cssEsc(`${type === 'oauth' ? 'connect' : 'test'}:${name}`)}"]`)?.focus();
         } catch (e) {
             say(e.detail || 'Could not add the account.', false, e.anchor);
         }
@@ -261,6 +269,26 @@ class GdriveAccounts extends HTMLElement {
         box.querySelector('.uri').textContent = this._data?.redirect_uri || '';
     }
 
+    /** Guided setup's {name, type}: fill the Add account form, then point at the file input. Never overwrites a name the user typed. */
+    _applyPrefill(p) {
+        const root = this.shadowRoot;
+        const input = root.querySelector('#add-name');
+        if (!p || !input) return;
+        const name = String(p.name || '');
+        if (NAME_RE.test(name) && (input.value === '' || input.value === this._prefilledName)) {
+            input.value = name;
+            this._prefilledName = name;
+        }
+        const select = root.querySelector('#add-type');
+        if (p.type in TYPES) select.value = p.type;
+        this._syncType();
+        const msg = root.querySelector('#add-msg');
+        msg.className = 'note';
+        msg.textContent = 'Filled in from Guided setup: choose the JSON file you downloaded.';
+        root.querySelector('.add').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        root.querySelector('#add-file').focus({ preventScroll: true });
+    }
+
     _setAdding(on) {
         this._adding = on;
         const btn = this.shadowRoot.querySelector('.add-go');
@@ -284,7 +312,7 @@ class GdriveAccounts extends HTMLElement {
         const prefill = e.composedPath().find((n) => n instanceof HTMLElement && n.dataset?.prefill);
         if (prefill) {
             const input = this.shadowRoot.querySelector('#add-name');
-            input.value = prefill.dataset.prefill;
+            input.value = this._prefilledName = prefill.dataset.prefill;
             input.focus();
             return;
         }
@@ -335,6 +363,7 @@ class GdriveAccounts extends HTMLElement {
         const who = !a.has_credential
             ? `<span class="bad">No ${oauth ? 'client' : 'key'} uploaded</span>`
             : oauth && !a.connected ? '<span class="bad">Not connected</span>' : esc(a.email || '(unknown)');
+        const needConnect = oauth && !a.connected;
         const connectLabel = a.connected ? 'Reconnect' : 'Connect';
         return `<article class="acct" aria-labelledby="h-${esc(a.name)}">
             <header>
@@ -348,10 +377,11 @@ class GdriveAccounts extends HTMLElement {
             </dl>
             ${note ? `<p class="note ${note.ok ? 'ok' : 'bad'}" role="status">${esc(note.text)}${note.link ? ` <a href="${esc(note.link)}" target="_blank" rel="noopener">Open Google sign-in</a>` : ''}${fixLink(note.anchor)}</p>` : ''}
             <div class="row actions">
-                <button type="button" data-act="test" data-name="${esc(a.name)}" data-key="test:${esc(a.name)}" ${dis || (!a.has_credential ? 'disabled' : '')}
-                    aria-label="Test ${esc(a.name)}">${busy === 'test' ? 'Testing…' : 'Test'}</button>
                 ${oauth ? `<button type="button" class="${a.connected && !a.missing.length ? '' : 'primary'}" data-act="connect" data-name="${esc(a.name)}" data-key="connect:${esc(a.name)}"
                     ${dis || (!a.has_credential ? 'disabled' : '')} aria-label="${connectLabel} ${esc(a.name)}">${busy === 'connect' ? 'Opening…' : connectLabel}</button>` : ''}
+                <button type="button" data-act="test" data-name="${esc(a.name)}" data-key="test:${esc(a.name)}" ${dis || (!a.has_credential || needConnect ? 'disabled' : '')}
+                    aria-label="Test ${esc(a.name)}"${needConnect ? ` title="Connect first" aria-describedby="hint-${esc(a.name)}"` : ''}>${busy === 'test' ? 'Testing…' : 'Test'}</button>
+                ${needConnect ? `<span class="sr" id="hint-${esc(a.name)}">Connect first</span>` : ''}
                 <button type="button" class="danger" data-act="remove" data-name="${esc(a.name)}" data-key="remove:${esc(a.name)}" ${dis}
                     aria-label="Remove ${esc(a.name)}">${busy === 'remove' ? 'Removing…' : 'Remove'}</button>
             </div>
