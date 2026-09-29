@@ -18,6 +18,14 @@ use Grav\Common\Grav;
 final class Setup
 {
     public const GUIDES = ['start-here', 'service-account', 'oauth', 'troubleshooting'];
+    /** What each Drive scope lets a plugin do, in words, for the notice on consumer plugins' settings pages. */
+    public const SCOPE_MEANING = [
+        'https://www.googleapis.com/auth/drive.file' => 'it can see and change only the files and folders it creates itself; the rest of the Drive stays invisible to it',
+        'https://www.googleapis.com/auth/drive.readonly' => 'it can read every file the account can see, but can\'t change or delete anything',
+        'https://www.googleapis.com/auth/drive' => 'it can read and change every file the account can see, which it needs to use a folder you picked yourself',
+    ];
+    /** When docs/setup/ was last checked against Google's console. Bump it whenever the guides are revised. */
+    public const GUIDES_REVISED = '2026-09-29';
     /** The largest credential JSON the endpoint accepts; Google's are ~2.5 KB. */
     public const MAX_JSON = 65536;
     /** Guide file → settings-page tab (blueprints.yaml keys; Admin2 selects a tab by `#<key>`). */
@@ -68,7 +76,8 @@ final class Setup
             foreach ($mine as $d) {
                 $scopes = self::scopeList($d['scopes']);
                 $row = current(array_filter($rows, static fn (array $r): bool => $r['name'] === $d['account']));
-                $lines[] = sprintf('Uses Google Drive account **%s** with %s: %s', self::clean($d['account']), $scopes, self::verdict($row ?: null, $d['scopes']));
+                $lines[] = sprintf('Uses Google Drive account **%s** with %s access: %s', self::clean($d['account']), $scopes, self::verdict($row ?: null, $d['scopes']))
+                    . self::scopeMeaning($d['scopes']);
             }
 
             return self::safe(implode("\n\n", $lines) . "\n\n" . $link);
@@ -521,7 +530,10 @@ final class Setup
         // Only here, not in the markdown: the full guides have no project to point at.
         $project = $p['project'] !== '' ? " The console links below already open the project you named (`{$p['project']}`)." : '';
 
-        return $how . "\n\nThese steps cover " . implode(' and ', $needs) . '. The full guides are on the other tabs.' . $project;
+        $revised = (\DateTimeImmutable::createFromFormat('!Y-m-d', self::GUIDES_REVISED) ?: new \DateTimeImmutable())->format('j F Y');
+
+        return $how . "\n\nThese steps cover " . implode(' and ', $needs) . '. The full guides are on the other tabs.' . $project
+            . " They were last revised on {$revised}. Google changes its console from time to time, so a page or button may look a little different from what's described.";
     }
 
     /**
@@ -596,6 +608,24 @@ final class Setup
     }
 
     /** @param string[] $scopes */
+    /**
+     * "  \n`drive.file` is Google's name for this permission (a scope): it can …" — one
+     * line per known scope, empty for unknown ones. Pure.
+     *
+     * @param string[] $scopes
+     */
+    public static function scopeMeaning(array $scopes): string
+    {
+        $out = '';
+        foreach ($scopes as $s) {
+            if (isset(self::SCOPE_MEANING[$s])) {
+                $out .= "  \n`" . str_replace(self::SCOPE_PREFIX, '', $s) . "` is Google's name for this permission (a *scope*): " . self::SCOPE_MEANING[$s] . '.';
+            }
+        }
+
+        return $out;
+    }
+
     private static function scopeList(array $scopes): string
     {
         return implode(', ', array_map(static fn (string $s): string => '`' . self::clean(str_replace(self::SCOPE_PREFIX, '', $s)) . '`', $scopes)) ?: '(no scopes)';

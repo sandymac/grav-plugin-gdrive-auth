@@ -418,6 +418,7 @@ foreach ($paths as $what => [$q, $has, $hasNot]) {
 $g = $guided(['kind' => 'gmail', 'project' => 'my-site-123']);
 check(str_contains($g, 'https://console.cloud.google.com/?project=my-site-123') && str_contains($g, 'auth/audience?project=my-site-123') && str_contains($g, 'already open the project you named') && str_contains($g, '(https://myaccount.google.com/connections)'), 'guided() with a project deep-links every console link, and only those');
 check(!str_contains($guided(['kind' => 'gmail']), 'already open the project'), 'guided() without a project leaves out the project line');
+check(preg_match('/^\d{4}-\d{2}-\d{2}$/', Setup::GUIDES_REVISED) === 1 && str_contains($guided(['kind' => 'gmail']), 'last revised on 29 September 2026') && str_contains($guided(['kind' => 'workspace', 'method' => 'sa']), 'Google changes its console'), 'guided() intro says when the steps were last revised and that Google may have changed them');
 foreach (['oauth', 'service-account'] as $full) {
     check(!str_contains(Setup::guide($full), 'already open the project'), "the full {$full} guide never claims its links open a project (no project there)");
 }
@@ -435,6 +436,11 @@ check(str_contains($guideJs, '__gdriveAccountPrefill') && str_contains($guideJs,
 check(!str_contains(Setup::guided(['kind' => '<b>x</b>']), '<b>'), 'guided() refuses a bad profile without echoing it');
 check(Setup::checklist() !== '' && Setup::whoUsesWhat() !== '', 'checklist() and whoUsesWhat() survive Grav not being booted');
 check(str_contains(Setup::consumerNotice('gdrive-images'), 'Set up Google Drive access'), 'consumerNotice() always points at the setup page');
+foreach (['drive.file', 'drive.readonly', 'drive'] as $short) {
+    $m = Setup::scopeMeaning(['https://www.googleapis.com/auth/' . $short]);
+    check(str_contains($m, "`{$short}` is Google's name for this permission (a *scope*)") && !str_contains($m, '<'), "scopeMeaning() explains {$short} in words");
+}
+check(Setup::scopeMeaning(['https://example.com/other']) === '', 'scopeMeaning() says nothing about a scope it does not know');
 
 // --- Every reason the library raises, and every Google reason the guide promises, has its Troubleshooting anchor.
 $trouble = (string) file_get_contents(__DIR__ . '/../docs/setup/troubleshooting.md');

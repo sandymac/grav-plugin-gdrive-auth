@@ -81,6 +81,9 @@ behaviour; the decisions in §1 are settled.
   `troubleshooting.md#x` → `#troubleshooting--x`; the component switches tabs
   the same way, then scrolls to `<a id="x">`. Renaming a tab key or an anchor
   breaks those links (smoke checks the anchors).
+- **Revising the guides:** after checking `docs/setup/*.md` against Google's
+  console, bump `Setup::GUIDES_REVISED`; Guided setup shows it with a
+  "Google may have changed this since" disclaimer.
 - **Guide markers:** `docs/setup/*.md` mark path-specific parts with
   `<!-- only: tag[,tag…] -->` … `<!-- /only -->`, each on its own line
   (indent inside list items). A block is kept if any entry is active; an entry

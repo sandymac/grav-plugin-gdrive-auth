@@ -1,3 +1,10 @@
+# v0.1.9
+## 09/29/2026
+
+1. [](#improved)
+    * The **Uses Google Drive account … with `drive.file` access** line on the backup and gallery settings now explains, in words, what that permission (scope) lets the plugin do.
+    * Guided setup's intro says when its steps were last revised (`Setup::GUIDES_REVISED`) and that Google may have changed its console since.
+
 # v0.1.8
 ## 09/29/2026
 
