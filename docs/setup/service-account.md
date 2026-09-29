@@ -30,10 +30,6 @@ thing takes about five minutes.
 3. Make sure the new project is selected in the picker before you go on. Every
    link below opens in whichever project is selected.
 
-<!-- only: project -->
-The console links below already open the project you named.
-<!-- /only -->
-
 ### 2. Turn on the Google Drive API
 
 1. Open the [Google Drive API page](https://console.cloud.google.com/apis/library/drive.googleapis.com).

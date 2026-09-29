@@ -21,7 +21,7 @@ use RocketTheme\Toolbox\File\AbstractFile;
  */
 class GdrivePlugin extends Plugin
 {
-    public const VERSION = '0.1.3';
+    public const VERSION = '0.1.4';
 
     public static function getSubscribedEvents(): array
     {

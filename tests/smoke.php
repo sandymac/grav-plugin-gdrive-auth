@@ -392,6 +392,9 @@ foreach ($paths as $what => [$q, $has, $hasNot]) {
 $g = $guided(['kind' => 'gmail', 'project' => 'my-site-123']);
 check(str_contains($g, 'https://console.cloud.google.com/?project=my-site-123') && str_contains($g, 'auth/audience?project=my-site-123') && str_contains($g, 'already open the project you named') && str_contains($g, '(https://myaccount.google.com/connections)'), 'guided() with a project deep-links every console link, and only those');
 check(!str_contains($guided(['kind' => 'gmail']), 'already open the project'), 'guided() without a project leaves out the project line');
+foreach (['oauth', 'service-account'] as $full) {
+    check(!str_contains(Setup::guide($full), 'already open the project'), "the full {$full} guide never claims its links open a project (no project there)");
+}
 check(!str_contains(Setup::guided(['kind' => '<b>x</b>']), '<b>'), 'guided() refuses a bad profile without echoing it');
 check(Setup::checklist() !== '' && Setup::whoUsesWhat() !== '', 'checklist() and whoUsesWhat() survive Grav not being booted');
 check(str_contains(Setup::consumerNotice('gdrive-images'), 'Set up Google Drive access'), 'consumerNotice() always points at the setup page');

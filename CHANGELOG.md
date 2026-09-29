@@ -1,3 +1,9 @@
+# v0.1.4
+## 09/29/2026
+
+1. [](#bugfix)
+    * The full OAuth and Service account guides no longer say their console links open "the project you named": only Guided setup, with a project ID entered, says so now.
+
 # v0.1.3
 ## 09/29/2026
 

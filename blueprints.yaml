@@ -1,7 +1,7 @@
 name: Google Drive Library
 slug: gdrive
 type: plugin
-version: 0.1.3
+version: 0.1.4
 description: Shared Google Drive library for Grav plugins. Service-account and OAuth (bring your own client) accounts, a thin Drive v3 client, and the OAuth callback. No Composer dependencies.
 icon: google
 author:

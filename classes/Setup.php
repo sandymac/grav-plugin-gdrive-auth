@@ -498,7 +498,10 @@ final class Setup
                 . (in_array('shared-drive', $tags, true) ? 'It writes into a Shared Drive you add it to.' : 'Without a Shared Drive it can only read folders you share with it.');
         $needs = array_filter([in_array('gallery', $tags, true) ? 'reading shared folders (galleries)' : '', in_array('backup', $tags, true) ? 'writing files (backups)' : '']);
 
-        return $how . "\n\nThese steps cover " . implode(' and ', $needs) . '. The full guides are on the other tabs.';
+        // Only here, not in the markdown: the full guides have no project to point at.
+        $project = $p['project'] !== '' ? " The console links below already open the project you named (`{$p['project']}`)." : '';
+
+        return $how . "\n\nThese steps cover " . implode(' and ', $needs) . '. The full guides are on the other tabs.' . $project;
     }
 
     /** @param array<int, array{plugin: string, account: string, scopes: string[]}> $declarations */

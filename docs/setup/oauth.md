@@ -33,10 +33,6 @@ minutes.
    name it (for example "My website") and click **Create**.
 3. Make sure the project is selected in the picker before you go on.
 
-<!-- only: project -->
-The console links below already open the project you named.
-<!-- /only -->
-
 ### 2. Turn on the Google Drive API
 
 1. Open the [Google Drive API page](https://console.cloud.google.com/apis/library/drive.googleapis.com).
