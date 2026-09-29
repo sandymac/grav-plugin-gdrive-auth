@@ -94,7 +94,7 @@ all your Drive files and `drive` can change them; Google calls these
 That's why step 7's warning appears.
 <!-- /only -->
 
-If you install another Drive plugin later, add its scopes here too and click
+If you install another compatible Drive plugin later, add its scopes here too and click
 **Reconnect** on the **Accounts** tab.
 
 ### 5. Create the OAuth client (Web application)
@@ -146,7 +146,7 @@ Treat this file like a password: don't email it or commit it anywhere.
    doesn't). The Accounts tab updates on its own and shows the Google account
    you chose.
 
-Then click **Test**, and set each Drive plugin to this account's name.
+Then click **Test**, and set each compatible Drive plugin to this account's name.
 
 <!-- only: gmail -->
 ### 7. "Google hasn't verified this app"

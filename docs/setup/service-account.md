@@ -123,7 +123,8 @@ service account and asks Google Drive who it is. You should see ✔ and the
 service account's email. If not, the result links to the matching
 [Troubleshooting](troubleshooting.md) entry.
 
-Then set each plugin that uses Drive (for example the gallery or backup plugin)
+Then set each compatible Drive plugin (one built on Google Drive Auth, such as
+the gallery or backup plugin)
 to this account's name, and give it the folder or Shared Drive you shared.
 
 ### Rotating or revoking the key

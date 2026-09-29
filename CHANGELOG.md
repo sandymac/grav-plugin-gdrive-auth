@@ -1,3 +1,9 @@
+# v0.1.14
+## 09/29/2026
+
+1. [](#improved)
+    * Wording: the account works for *compatible* Drive plugins (ones built on Google Drive Auth), not every Drive plugin, since other developers' plugins may do their own sign-in.
+
 # v0.1.13
 ## 09/29/2026
 

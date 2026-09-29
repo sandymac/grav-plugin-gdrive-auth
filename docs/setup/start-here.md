@@ -1,7 +1,7 @@
 ## Start here
 
-This plugin connects your Grav site to Google Drive for other plugins, such as
-galleries that show photos from a Drive folder and backups that upload to Drive.
+This plugin connects your Grav site to Google Drive for other plugins built on
+it, such as galleries that show photos from a Drive folder and backups that upload to Drive.
 You set up one or more **accounts** here, and each of those plugins picks one.
 
 There are two kinds of account. Pick one with this table, follow its guide, and
@@ -36,7 +36,7 @@ A few things that are true whichever kind you pick:
 - **Make sure your web server refuses `user/data/`.** Grav's standard
   `.htaccess` and nginx configs already do. If yours are custom, check that
   `https://{{site}}/user/data/` gives a 403 or 404.
-- **Plugins declare what they need.** Each plugin that uses Google Drive says
+- **Plugins declare what they need.** Each plugin built on Google Drive Auth says
   which account it uses and which permissions ("scopes") it needs. The
   **Who uses what** table below shows them. For OAuth accounts, **Connect**
   asks Google for all of them at once.

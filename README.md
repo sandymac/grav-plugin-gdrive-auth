@@ -2,8 +2,8 @@
 
 Google sign-in for the Grav 2 Google Drive plugin family. You connect a Google
 account once, as an OAuth user account through your own Google Cloud "Web
-application" client (most people) or as a service account, and every Drive
-plugin on the site uses it. It also gives those plugins a thin Drive v3 client
+application" client (most people) or as a service account, and every compatible
+Drive plugin (one built on Google Drive Auth) can use it. It also gives those plugins a thin Drive v3 client
 and handles the OAuth callback. Its settings page in Admin2 (Plugins → Google
 Drive Auth) manages the accounts and carries the guided setup and full guides.
 Its only front-end route is that callback, and it has no Composer dependencies.

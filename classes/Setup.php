@@ -557,7 +557,7 @@ final class Setup
         $out = "### Then\n\n1. On the [Accounts](#accounts_tab) tab, add an account named **" . self::clean($account) . '**'
             . ': choose **' . ($method === 'sa' ? 'Service account' : 'OAuth') . "** and upload the JSON file from above.\n"
             . '2. ' . ($method === 'sa' ? 'Click' : 'Click **Connect**, then click') . " **Test**. A ✘ links to its fix in [Troubleshooting](troubleshooting.md).\n"
-            . "3. In each Drive plugin's settings, pick the account" . ($declarations === [] ? " by that name.\n" : ":\n");
+            . "3. In each compatible Drive plugin's settings, pick the account" . ($declarations === [] ? " by that name.\n" : ":\n");
         foreach ($declarations as $d) {
             $out .= sprintf("   - **%s** is set to an account named **%s**. Name yours the same, or change it in that plugin's settings.\n", self::clean($d['plugin']), self::clean($d['account']));
         }
