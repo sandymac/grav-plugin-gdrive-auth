@@ -310,7 +310,7 @@ allow them.
 
 ### `io`: the site couldn't write its own files
 
-**Cause.** The web server can't write to `user/data/gdrive/` (credentials) or
+**Cause.** The web server can't write to `user/data/gdrive/auth/` (credentials) or
 `user/config/plugins/gdrive-auth.yaml` (the account list).
 
 **Fix.** Make both writable by the web server's user, the same way the rest of

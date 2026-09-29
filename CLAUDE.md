@@ -30,7 +30,7 @@ behaviour; the decisions in §1 are settled.
 
 ## Trust boundaries (never simplified away)
 
-- **Credential files** live in `user/data/gdrive/` under fixed names
+- **Credential files** live in `user/data/gdrive/auth/` under fixed names
   (`<name>.sa.json`, `<name>.client.json`, `<name>.token.json`), written
   atomically with mode 0600. Never in config, never in the repo, never logged.
 - **Account names become filenames**: every entry point validates
@@ -72,7 +72,7 @@ behaviour; the decisions in §1 are settled.
   save posts the whole config it loaded, so `onAdminSave` resets `accounts` to
   the on-disk value; otherwise a stale page revives removed accounts.
 - **Slug rename (0.1.13):** slug `gdrive-auth`, class `GdriveAuthPlugin`; the
-  namespace `Grav\Plugin\Gdrive`, `user/data/gdrive/`, `/gdrive` routes,
+  namespace `Grav\Plugin\Gdrive`, `user/data/gdrive/` (its `auth/` subdir since 0.1.15), `/gdrive` routes,
   `api.gdrive.manage` and `/gdrive-oauth/callback` deliberately kept the old
   name. `Gdrive::withLegacyAccounts()` is the read-only fallback to a legacy
   `gdrive.yaml`; drop it once sites have migrated.

@@ -46,7 +46,11 @@ Upgrading from 0.1.12 or earlier (slug `gdrive`)? Rename
 `user/config/plugins/gdrive.yaml` to `gdrive-auth.yaml`. Until you do, the
 library reads the accounts from the old file (read-only) and logs a notice.
 
-Their credentials live in `user/data/gdrive/` under fixed names, mode 0600:
+Upgrading from 0.1.14 or earlier? Move the credential files from
+`user/data/gdrive/` into `user/data/gdrive/auth/` (a directory the web server
+can write; keep the file modes). There is no automatic migration.
+
+Their credentials live in `user/data/gdrive/auth/` under fixed names, mode 0600:
 `<name>.sa.json` (service-account key), `<name>.client.json` (OAuth client),
 `<name>.token.json` (refresh token, granted scopes, email), plus
 `<name>.test.json` (the last Test result, no secrets). Secrets never go
@@ -165,7 +169,7 @@ All need `api.gdrive.manage`. Success is `{"data": …}`; errors are
 | `GET /gdrive/accounts` | `{accounts, redirect_uri, wanted}`: each account's `status()` plus `declared` (per plugin), `missing` (declared scopes an OAuth account hasn't granted) and `test` (the last Test result); `wanted` lists declared account names that don't exist yet |
 | `POST /gdrive/accounts` | Body `{name, type: service_account\|oauth, json}` (`json` is the file's text, ≤ 64 KB). Validates and stores the credential, records the account in `user/config/plugins/gdrive-auth.yaml`. 201 with the list |
 | `DELETE /gdrive/accounts/{name}` | Revokes (OAuth), deletes the files, drops it from config. The list |
-| `POST /gdrive/accounts/{name}/test` | A real `about.get` with the declared scopes; stored in `user/data/gdrive/<name>.test.json`. `{result, …list}` |
+| `POST /gdrive/accounts/{name}/test` | A real `about.get` with the declared scopes; stored in `user/data/gdrive/auth/<name>.test.json`. `{result, …list}` |
 | `POST /gdrive/accounts/{name}/connect` | `{url}`: Google's consent URL for the declared ∪ granted scopes (OAuth only) |
 | `GET /gdrive/guide?kind=&method=&shared_drive=&admin=&project=` | `{html, method, tags, account}`: the Guided setup steps and the suggested account name. `kind` is `gmail` (personal) or `workspace`; `method` `oauth` (default) or `sa`; `shared_drive` `yes\|no\|unsure`; `admin` `yes\|no`; `project` a Cloud project ID. Anything else is a 422 |
 
