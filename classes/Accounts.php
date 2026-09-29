@@ -8,7 +8,7 @@ use Grav\Common\Cache;
 
 /**
  * The account registry: account name → Credentials. Config
- * (plugins.gdrive.accounts.<name>.type) says what kind each account is; the
+ * (plugins.gdrive-auth.accounts.<name>.type) says what kind each account is; the
  * secrets live in the data dir under fixed names, never in config:
  *   <name>.sa.json      service-account key
  *   <name>.client.json  OAuth Web client
@@ -29,7 +29,7 @@ final class Accounts
     private array $creds = [];
 
     /**
-     * @param array $config plugins.gdrive
+     * @param array $config plugins.gdrive-auth
      * @param string $dataDir resolved user://data/gdrive
      * @param callable(string, string, array): array{int, string, array<string, string>} $http
      */

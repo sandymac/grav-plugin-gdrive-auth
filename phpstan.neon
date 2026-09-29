@@ -11,7 +11,7 @@ parameters:
             message: '#Cache\:\:save\(\) expects array\|int\|object, string given#'
             path: classes/TokenCache.php
     paths:
-        - gdrive.php
+        - gdrive-auth.php
         - classes
     # Symbol resolution comes from a real Grav install at .gravtest/grav-admin
     # (CI recreates the same layout, see .github/workflows/ci.yml). Only

@@ -1,4 +1,4 @@
-# grav-plugin-gdrive
+# grav-plugin-gdrive-auth
 
 A Grav CMS plugin (PHP 8.3+, Grav 2.0.23+): the shared Google Drive library
 for the gdrive family. Google auth (service accounts and bring-your-own OAuth
@@ -68,9 +68,14 @@ behaviour; the decisions in §1 are settled.
   `PermissionsRegisterEvent` handler does. Demo accounts are blocked from every
   route (the permission doesn't end in `.read`).
 - **Config writes:** the endpoints write `accounts` to base
-  `user/config/plugins/gdrive.yaml` with `YamlFile`. Admin2's settings-form
+  `user/config/plugins/gdrive-auth.yaml` with `YamlFile`. Admin2's settings-form
   save posts the whole config it loaded, so `onAdminSave` resets `accounts` to
   the on-disk value; otherwise a stale page revives removed accounts.
+- **Slug rename (0.1.13):** slug `gdrive-auth`, class `GdriveAuthPlugin`; the
+  namespace `Grav\Plugin\Gdrive`, `user/data/gdrive/`, `/gdrive` routes,
+  `api.gdrive.manage` and `/gdrive-oauth/callback` deliberately kept the old
+  name. `Gdrive::withLegacyAccounts()` is the read-only fallback to a legacy
+  `gdrive.yaml`; drop it once sites have migrated.
 - **Blueprint:** `data-content@: ['\Class::method', 'arg']` works (file-loaded
   blueprints are trusted). Admin2 **hides a display field** whose content is
   empty or contains `<script` or `<div id=`; `Setup::safe()` guards that.
@@ -127,7 +132,7 @@ Machine- and deployment-specific notes (hosts, ssh aliases) go in
 
 ### Issue tracker
 
-GitHub Issues on `sandymac/grav-plugin-gdrive`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+GitHub Issues on `sandymac/grav-plugin-gdrive-auth`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

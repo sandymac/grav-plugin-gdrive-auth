@@ -34,13 +34,17 @@ Managing accounts needs the **Manage Google Drive accounts** permission
 [api](https://github.com/getgrav/grav-plugin-api) plugin (Admin2 uses it
 anyway); the library itself doesn't.
 
-Accounts are declared in `user/config/plugins/gdrive.yaml`:
+The plugin is Google Drive Auth (`gdrive-auth`). Accounts are declared in `user/config/plugins/gdrive-auth.yaml`:
 
 ```yaml
 accounts:
   site:     { type: service_account }
   personal: { type: oauth }
 ```
+
+Upgrading from 0.1.12 or earlier (slug `gdrive`)? Rename
+`user/config/plugins/gdrive.yaml` to `gdrive-auth.yaml`. Until you do, the
+library reads the accounts from the old file (read-only) and logs a notice.
 
 Their credentials live in `user/data/gdrive/` under fixed names, mode 0600:
 `<name>.sa.json` (service-account key), `<name>.client.json` (OAuth client),
@@ -51,7 +55,7 @@ in config. Make sure your web server refuses `user/data/`.
 ## Public API
 
 Everything below is stable under semver. Anything not listed is internal.
-Dependent plugins declare `{ name: gdrive, version: '>=0.1.0' }` and should
+Dependent plugins declare `{ name: gdrive-auth, version: '>=0.1.13' }` and should
 check `class_exists(\Grav\Plugin\Gdrive\Drive::class)` before use.
 
 ### `Grav\Plugin\Gdrive\Gdrive`
@@ -159,7 +163,7 @@ All need `api.gdrive.manage`. Success is `{"data": …}`; errors are
 | Method and path | Does |
 |---|---|
 | `GET /gdrive/accounts` | `{accounts, redirect_uri, wanted}`: each account's `status()` plus `declared` (per plugin), `missing` (declared scopes an OAuth account hasn't granted) and `test` (the last Test result); `wanted` lists declared account names that don't exist yet |
-| `POST /gdrive/accounts` | Body `{name, type: service_account\|oauth, json}` (`json` is the file's text, ≤ 64 KB). Validates and stores the credential, records the account in `user/config/plugins/gdrive.yaml`. 201 with the list |
+| `POST /gdrive/accounts` | Body `{name, type: service_account\|oauth, json}` (`json` is the file's text, ≤ 64 KB). Validates and stores the credential, records the account in `user/config/plugins/gdrive-auth.yaml`. 201 with the list |
 | `DELETE /gdrive/accounts/{name}` | Revokes (OAuth), deletes the files, drops it from config. The list |
 | `POST /gdrive/accounts/{name}/test` | A real `about.get` with the declared scopes; stored in `user/data/gdrive/<name>.test.json`. `{result, …list}` |
 | `POST /gdrive/accounts/{name}/connect` | `{url}`: Google's consent URL for the declared ∪ granted scopes (OAuth only) |

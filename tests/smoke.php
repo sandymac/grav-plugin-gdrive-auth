@@ -19,6 +19,7 @@ spl_autoload_register(static function (string $class): void {
 use Grav\Plugin\Gdrive\Accounts;
 use Grav\Plugin\Gdrive\Credentials;
 use Grav\Plugin\Gdrive\Drive;
+use Grav\Plugin\Gdrive\Gdrive;
 use Grav\Plugin\Gdrive\DriveException;
 use Grav\Plugin\Gdrive\Http;
 use Grav\Plugin\Gdrive\OAuthUser;
@@ -520,7 +521,7 @@ check(Setup::scopeMeaning(['https://example.com/other']) === '', 'scopeMeaning()
 
 // --- Every reason the library raises, and every Google reason the guide promises, has its Troubleshooting anchor.
 $trouble = (string) file_get_contents(__DIR__ . '/../docs/setup/troubleshooting.md');
-$src = implode("\n", array_map('file_get_contents', [...(glob(__DIR__ . '/../classes/*.php') ?: []), __DIR__ . '/../gdrive.php']));
+$src = implode("\n", array_map('file_get_contents', [...(glob(__DIR__ . '/../classes/*.php') ?: []), __DIR__ . '/../gdrive-auth.php']));
 preg_match_all("/new DriveException\\([^;]*?,\\s*'([A-Za-z_]+)'/s", $src, $m);
 $ours = array_values(array_unique($m[1]));
 check(count($ours) >= 9, 'found the library\'s own reason codes: ' . implode(', ', $ours));
@@ -539,11 +540,17 @@ foreach (array_merge(glob($tmp . '/oauth-state/*') ?: [], glob($tmp . '/*') ?: [
 }
 @rmdir($tmp);
 
+// --- Legacy gdrive.yaml fallback (pre-0.1.13 slug): only fills in when gdrive-auth has no accounts.
+$legacyAccts = ['accounts' => ['site' => ['type' => 'oauth']]];
+check(Gdrive::withLegacyAccounts([], $legacyAccts) === [$legacyAccts, true], 'legacy accounts are used when gdrive-auth has none');
+check(Gdrive::withLegacyAccounts(['accounts' => ['new' => ['type' => 'oauth']]], $legacyAccts)[1] === false, 'legacy accounts never override gdrive-auth accounts');
+check(Gdrive::withLegacyAccounts(['x' => 1], [])[1] === false, 'no legacy accounts: config untouched');
+
 // --- Version drift: GPM installs blueprints.yaml's version; the plugin reports its constant.
 $blueprints = (string) file_get_contents(__DIR__ . '/../blueprints.yaml');
 preg_match('/^version:\s*(\S+)/m', $blueprints, $bv);
-preg_match("/const VERSION = '([^']+)'/", (string) file_get_contents(__DIR__ . '/../gdrive.php'), $pv);
-check(($bv[1] ?? '') === ($pv[1] ?? 'missing'), sprintf('GdrivePlugin::VERSION (%s) matches blueprints.yaml (%s)', $pv[1] ?? 'missing', $bv[1] ?? 'missing'));
+preg_match("/const VERSION = '([^']+)'/", (string) file_get_contents(__DIR__ . '/../gdrive-auth.php'), $pv);
+check(($bv[1] ?? '') === ($pv[1] ?? 'missing'), sprintf('GdriveAuthPlugin::VERSION (%s) matches blueprints.yaml (%s)', $pv[1] ?? 'missing', $bv[1] ?? 'missing'));
 
 // --- Admin2 renders custom fields inside its own <form>: a nested <form> is dropped by the
 // parser (the 0.1.0 crash), and an untyped <button> would submit the settings form.

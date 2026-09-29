@@ -17,7 +17,7 @@ const TYPES = { service_account: 'Service account', oauth: 'OAuth' };
 const NAME_RE = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 const MAX_JSON = 65536;
 const CONNECTIONS = '<a href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">Google Account → Third-party connections</a>';
-// The callback window's failure reasons (gdrive.php CONNECT_FAILED); anything else gets the generic text.
+// The callback window's failure reasons (gdrive-auth.php CONNECT_FAILED); anything else gets the generic text.
 const CONNECT_FAILED = {
     access_denied: 'You cancelled Google’s sign-in. Close this window, then click Connect to try again.',
     redirect_uri_mismatch: 'Google rejected this site’s return address. Close this window and see redirect_uri_mismatch under Troubleshooting.',

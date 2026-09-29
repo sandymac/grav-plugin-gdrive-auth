@@ -14,7 +14,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use RocketTheme\Toolbox\File\YamlFile;
 
 /**
- * The Admin2 endpoints under /api/v1/gdrive (routes in gdrive.php). Only
+ * The Admin2 endpoints under /api/v1/gdrive (routes in gdrive-auth.php). Only
  * loaded when the api plugin dispatches to it, so the library itself never
  * depends on the api plugin. Every route needs api.gdrive.manage (API super
  * users pass). Responses never carry a secret: status(), test() and the last
@@ -153,10 +153,10 @@ final class Api extends AbstractApiController
     }
 
     /**
-     * Writes plugins.gdrive.accounts to user/config/plugins/gdrive.yaml,
+     * Writes plugins.gdrive-auth.accounts to user/config/plugins/gdrive-auth.yaml,
      * keeping whatever else the file holds, and updates the live config.
      * ponytail: always the base user/config; an environment overlay
-     * (user/env/<env>/config/plugins/gdrive.yaml) that sets accounts would
+     * (user/env/<env>/config/plugins/gdrive-auth.yaml) that sets accounts would
      * shadow it. Write through the env if a site ever needs per-env accounts.
      */
     private function persist(array $config): void
@@ -166,17 +166,17 @@ final class Api extends AbstractApiController
         if (!is_string($dir) || $dir === '') {
             throw new DriveException('gdrive: user/config not found', 'io');
         }
-        $file = YamlFile::instance($dir . '/plugins/gdrive.yaml');
+        $file = YamlFile::instance($dir . '/plugins/gdrive-auth.yaml');
         try {
             $data = (array) $file->content();
             $data['accounts'] = $accounts;
             $file->save($data);
         } catch (\Throwable $e) {
-            throw new DriveException('gdrive: cannot write user/config/plugins/gdrive.yaml', 'io', 0, $e);
+            throw new DriveException('gdrive: cannot write user/config/plugins/gdrive-auth.yaml', 'io', 0, $e);
         } finally {
             $file->free();
         }
-        $this->config->set('plugins.gdrive.accounts', $accounts);
+        $this->config->set('plugins.gdrive-auth.accounts', $accounts);
     }
 
     /** Runs $fn, turning a DriveException into problem+json with `code` = reason and the Troubleshooting `anchor`. */

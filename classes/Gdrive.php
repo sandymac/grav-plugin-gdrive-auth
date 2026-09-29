@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Grav\Plugin\Gdrive;
 
 use Grav\Common\Grav;
+use RocketTheme\Toolbox\File\YamlFile;
 use RocketTheme\Toolbox\Event\Event;
 
 /**
@@ -40,8 +41,23 @@ final class Gdrive
             if (!is_dir($dir)) {
                 @mkdir($dir, 0700, true);
             }
+            $config = (array) $grav['config']->get('plugins.gdrive-auth', []);
+            $legacy = $grav['locator']->findResource('user://config/plugins/gdrive.yaml', true);
+            if (is_string($legacy) && empty($config['accounts'])) {
+                $file = YamlFile::instance($legacy);
+                try {
+                    [$config, $used] = self::withLegacyAccounts($config, (array) $file->content());
+                    if ($used) {
+                        $grav['log']->notice('gdrive: using accounts from legacy user/config/plugins/gdrive.yaml; rename it to gdrive-auth.yaml');
+                    }
+                } catch (\Throwable) {
+                    // unreadable legacy file: behave as if absent
+                } finally {
+                    $file->free();
+                }
+            }
             self::$accounts = new Accounts(
-                (array) $grav['config']->get('plugins.gdrive', []),
+                $config,
                 $dir,
                 $grav['cache'],
                 self::$http ?? Http::withRetry([Http::class, 'curl']),
@@ -49,6 +65,26 @@ final class Gdrive
         }
 
         return self::$accounts;
+    }
+
+    /**
+     * Read-only upgrade path for sites still on the pre-0.1.13 slug `gdrive`:
+     * when plugins.gdrive-auth has no accounts, borrow them from the legacy
+     * user/config/plugins/gdrive.yaml. Nothing is moved or written.
+     *
+     * @param array $config plugins.gdrive-auth
+     * @param array $legacy the legacy file's parsed content
+     * @return array{0: array, 1: bool} config, and whether the legacy accounts were used
+     */
+    public static function withLegacyAccounts(array $config, array $legacy): array
+    {
+        if (empty($config['accounts']) && !empty($legacy['accounts']) && is_array($legacy['accounts'])) {
+            $config['accounts'] = $legacy['accounts'];
+
+            return [$config, true];
+        }
+
+        return [$config, false];
     }
 
     /**

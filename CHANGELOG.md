@@ -1,3 +1,10 @@
+# v0.1.13
+## 09/29/2026
+
+1. [](#improved)
+    * Slug renamed `gdrive` → `gdrive-auth` (Google Drive Auth; repo `sandymac/grav-plugin-gdrive-auth`). The plugin's config key is now `plugins.gdrive-auth` and its file `user/config/plugins/gdrive-auth.yaml`; the settings page is at `/plugins/gdrive-auth`. Credentials in `user/data/gdrive/`, the OAuth callback URL, routes and the `api.gdrive.manage` permission are unchanged.
+    * **Upgrade:** remove the old `gdrive` plugin folder and install `gdrive-auth` (GPM: `bin/gpm install gdrive-auth`), rename `user/config/plugins/gdrive.yaml` to `gdrive-auth.yaml`, then update Google Drive Backup (0.1.12+) and Google Drive Images, which now depend on `gdrive-auth`. Until the file is renamed the accounts are read from the old one (read-only) and a notice is logged.
+
 # v0.1.12
 ## 09/29/2026
 

@@ -629,7 +629,7 @@ final class Setup
         $grav = Grav::instance();
         $route = trim((string) $grav['config']->get('plugins.admin2.route', '/admin'), '/');
 
-        return rtrim((string) $grav['uri']->rootUrl(false), '/') . '/' . $route . '/plugins/gdrive';
+        return rtrim((string) $grav['uri']->rootUrl(false), '/') . '/' . $route . '/plugins/gdrive-auth';
     }
 
     /** Values from uploaded files and other plugins go into markdown: no markup, no code-span breakouts. */

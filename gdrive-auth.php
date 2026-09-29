@@ -19,9 +19,9 @@ use RocketTheme\Toolbox\File\AbstractFile;
  * callback; the settings page talks to the Admin2 endpoints in Gdrive\Api;
  * everything else is classes other plugins call through Gdrive::drive().
  */
-class GdrivePlugin extends Plugin
+class GdriveAuthPlugin extends Plugin
 {
-    public const VERSION = '0.1.12';
+    public const VERSION = '0.1.13';
 
     /** The callback's failure text by reason: fixed strings only, never the exception's message. '' is everything else. */
     private const CONNECT_FAILED = [
@@ -75,8 +75,8 @@ class GdrivePlugin extends Plugin
     {
         $obj = $event['object'] ?? null;
         $file = $obj instanceof Data ? $obj->file() : null;
-        if ($file instanceof AbstractFile && str_ends_with(str_replace('\\', '/', (string) $file->filename()), '/plugins/gdrive.yaml')) {
-            $obj->set('accounts', (array) $this->config->get('plugins.gdrive.accounts', []));
+        if ($file instanceof AbstractFile && str_ends_with(str_replace('\\', '/', (string) $file->filename()), '/plugins/gdrive-auth.yaml')) {
+            $obj->set('accounts', (array) $this->config->get('plugins.gdrive-auth.accounts', []));
         }
     }
 
