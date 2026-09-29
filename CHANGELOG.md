@@ -1,3 +1,9 @@
+# v0.1.2
+## 09/29/2026
+
+1. [](#improved)
+    * Renamed to **Google Drive Library** in the plugin list, so it reads as the shared piece the other Google Drive plugins depend on.
+
 # v0.1.1
 ## 09/29/2026
 
