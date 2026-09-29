@@ -138,12 +138,13 @@ Treat this file like a password: don't email it or commit it anywhere.
    <!-- only: gmail -->
 5. If Google says **"Google hasn't verified this app"**, see step 7.
    <!-- /only -->
-6. On the consent screen, **tick every box** Google shows, then click
-   **Continue**. Leaving a box unticked means that permission isn't granted, and
-   the plugin that needs it fails with
+6. If Google shows permissions with boxes, tick every box. Then click
+   **Continue** or **Allow**. A box left empty is a permission this site won't
+   have, and the plugin that needs it fails with
    [`scope_not_granted`](troubleshooting.md#scope-not-granted).
-7. The window says **Connected as you@…** and closes itself. The account now
-   shows who it's connected as, and which scopes were granted.
+7. The window says **Connected as you@…** and closes (close it yourself if it
+   doesn't). The Accounts tab updates on its own and shows the Google account
+   you chose.
 
 Then click **Test**, and set each Drive plugin to this account's name.
 

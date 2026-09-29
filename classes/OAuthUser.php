@@ -18,6 +18,10 @@ final class OAuthUser implements Credentials
     public const AUTH_URI = 'https://accounts.google.com/o/oauth2/v2/auth';
     public const TOKEN_URI = 'https://oauth2.googleapis.com/token';
     public const REVOKE_URI = 'https://oauth2.googleapis.com/revoke';
+    /** What Google writes into a downloaded client JSON. Anything else is refused: the secret and the code go there. */
+    public const GOOGLE_AUTH_URIS = [self::AUTH_URI, 'https://accounts.google.com/o/oauth2/auth'];
+    public const GOOGLE_TOKEN_URIS = [self::TOKEN_URI, 'https://accounts.google.com/o/oauth2/token', 'https://www.googleapis.com/oauth2/v4/token'];
+    public const NOT_GOOGLE = "This file's sign-in or token address isn't Google's. Upload the JSON Google downloaded, without editing it.";
 
     /** @var callable(string, string, array): array{int, string, array<string, string>} */
     private $http;
@@ -51,10 +55,9 @@ final class OAuthUser implements Credentials
         if (isset($web['redirect_uris']) && !is_array($web['redirect_uris'])) {
             throw new DriveException('The OAuth client\'s redirect_uris must be a list.', 'bad_credential');
         }
-        foreach (['auth_uri', 'token_uri'] as $uri) {
-            if (isset($web[$uri]) && !str_starts_with((string) $web[$uri], 'https://')) {
-                throw new DriveException("The OAuth client's {$uri} must be https.", 'bad_credential');
-            }
+        if ((isset($web['auth_uri']) && !in_array($web['auth_uri'], self::GOOGLE_AUTH_URIS, true))
+            || (isset($web['token_uri']) && !in_array($web['token_uri'], self::GOOGLE_TOKEN_URIS, true))) {
+            throw new DriveException(self::NOT_GOOGLE, 'bad_credential');
         }
 
         return $web;
@@ -80,9 +83,8 @@ final class OAuthUser implements Credentials
      */
     public function authUrl(array $scopes, string $redirectUri, string $state, string $codeChallenge): string
     {
-        $uri = (string) ($this->client['auth_uri'] ?? self::AUTH_URI);
-
-        return $uri . (str_contains($uri, '?') ? '&' : '?') . http_build_query([
+        // Always Google's own endpoint, never the file's (validateClient only vouches for it at upload).
+        return self::AUTH_URI . '?' . http_build_query([
             'client_id' => $this->client['client_id'],
             'redirect_uri' => $redirectUri,
             'response_type' => 'code',
@@ -205,7 +207,7 @@ final class OAuthUser implements Credentials
     /** POSTs a grant to the token endpoint with the client's credentials. */
     private function post(array $params, string $what): array
     {
-        [$status, $body] = ($this->http)('POST', (string) ($this->client['token_uri'] ?? self::TOKEN_URI), [
+        [$status, $body] = ($this->http)('POST', self::TOKEN_URI, [
             'headers' => ['Content-Type: application/x-www-form-urlencoded'],
             'body' => http_build_query($params + [
                 'client_id' => $this->client['client_id'],

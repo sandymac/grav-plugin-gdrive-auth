@@ -16,6 +16,14 @@ const SCOPE_PREFIX = 'https://www.googleapis.com/auth/';
 const TYPES = { service_account: 'Service account', oauth: 'OAuth' };
 const NAME_RE = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 const MAX_JSON = 65536;
+const CONNECTIONS = '<a href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">Google Account → Third-party connections</a>';
+// The callback window's failure reasons (gdrive.php CONNECT_FAILED); anything else gets the generic text.
+const CONNECT_FAILED = {
+    access_denied: 'You cancelled Google’s sign-in. Close this window, then click Connect to try again.',
+    redirect_uri_mismatch: 'Google rejected this site’s return address. Close this window and see redirect_uri_mismatch under Troubleshooting.',
+    bad_state: 'This sign-in link expired or was already used. Close this window and click Connect again.',
+    consent: 'Google Drive could not be connected. Close this window and click Connect again.',
+};
 
 class GdriveAccounts extends HTMLElement {
     constructor() {
@@ -26,9 +34,11 @@ class GdriveAccounts extends HTMLElement {
         this._data = null;        // {accounts, redirect_uri, wanted}
         this._loadError = null;   // {detail, status}
         this._busy = {};          // name → 'test' | 'connect' | 'remove'
-        this._notes = {};         // name → {ok, text, anchor}
+        this._notes = {};         // name → {ok, text, anchor, link, pending}
+        this._listNote = null;    // {ok, html}: our own fixed HTML only, e.g. after a Remove
         this._adding = false;
         this._popupTimer = null;
+        this._connecting = null;  // the account whose Google window is open
         this._onMessage = this._onMessage.bind(this);
         this._onPrefill = (e) => this._applyPrefill(e.detail);
         this._prefilledName = null; // the name we filled in, so a later prefill may replace it but never the user's typing
@@ -135,8 +145,8 @@ class GdriveAccounts extends HTMLElement {
             }
             if (popup && !popup.closed) {
                 popup.location.href = url;
-                this._notes[name] = { ok: true, text: 'Finish signing in in the Google window. This list updates when you are done.' };
-                this._watchPopup(popup);
+                this._notes[name] = { ok: true, pending: true, text: 'Finish signing in in the Google window. This list updates when you are done.' };
+                this._watchPopup(popup, name);
             } else {
                 this._notes[name] = { ok: true, text: 'Your browser blocked the Google window.', link: url };
             }
@@ -144,22 +154,32 @@ class GdriveAccounts extends HTMLElement {
     }
 
     /** Refresh once the popup closes, in case its message never arrived (closed early, or blocked). */
-    _watchPopup(popup) {
+    _watchPopup(popup, name) {
         clearInterval(this._popupTimer);
-        this._popupTimer = setInterval(() => {
-            if (popup.closed) {
-                clearInterval(this._popupTimer);
-                this._load();
-            }
+        this._connecting = name;
+        this._popupTimer = setInterval(async () => {
+            if (!popup.closed) return;
+            clearInterval(this._popupTimer);
+            await this._load();
+            if (!this._notes[name]?.pending) return; // a message from the window already said how it went
+            if (this._account(name)?.connected) delete this._notes[name];
+            else this._notes[name] = { ok: false, text: 'The Google window closed without connecting. Click Connect to try again.' };
+            this._renderList();
         }, 1000);
     }
 
     _onMessage(e) {
-        if (e.origin !== window.location.origin || !e.data || e.data.gdrive !== 'connected') return;
-        const name = String(e.data.account || '');
-        if (name) this._notes[name] = { ok: true, text: 'Connected.' };
-        window.__GRAV_TOAST?.success?.('Google account connected');
-        this._load();
+        if (e.origin !== window.location.origin || !e.data) return;
+        const name = String(e.data.account || this._connecting || '');
+        if (e.data.gdrive === 'connected') {
+            if (name) this._notes[name] = { ok: true, text: 'Connected.' };
+            window.__GRAV_TOAST?.success?.('Google account connected');
+            this._load();
+        } else if (e.data.gdrive === 'error' && name) {
+            const reason = Object.hasOwn(CONNECT_FAILED, String(e.data.reason)) ? String(e.data.reason) : '';
+            this._notes[name] = { ok: false, text: `✘ ${CONNECT_FAILED[reason] || CONNECT_FAILED.consent}`, anchor: reason ? reason.replace(/_/g, '-') : 'other' };
+            this._renderList();
+        }
     }
 
     async _remove(name) {
@@ -168,10 +188,17 @@ class GdriveAccounts extends HTMLElement {
             ? await window.__GRAV_DIALOGS.confirm({ title: 'Remove account', message, confirmLabel: 'Remove', variant: 'destructive' })
             : window.confirm(message);
         if (!ok) return;
+        const oauth = this._account(name)?.type === 'oauth' && this._account(name)?.connected;
         await this._act(name, 'remove', async () => {
             this._data = await this._call('DELETE', `/gdrive/accounts/${encodeURIComponent(name)}`);
             delete this._notes[name];
-            window.__GRAV_TOAST?.success?.(`Removed ${name}`);
+            if (this._data.warning) {
+                // Not a success toast: the site's access at Google may still be live.
+                this._listNote = { ok: false, html: `${esc(name)}: Removed from this site. Google couldn’t be reached, so check ${CONNECTIONS} and remove this site there.` };
+            } else {
+                this._listNote = { ok: true, html: `${esc(name)}: ${oauth ? 'Removed from this site, and its Google access was revoked.' : 'Removed from this site.'}` };
+                window.__GRAV_TOAST?.success?.(`Removed ${name}`);
+            }
         });
         this.shadowRoot.querySelector('#add-name')?.focus();
     }
@@ -197,7 +224,12 @@ class GdriveAccounts extends HTMLElement {
             root.querySelectorAll('.add input, .add textarea').forEach((el) => { el.value = ''; });
             this._syncType();
             say(type === 'oauth' ? `Added ${name}. Now click Connect on it.` : `Added ${name}. Share your folder with its email, then click Test.`, true);
-            window.__GRAV_TOAST?.success?.(`Added ${name}`);
+            if (this._data.warning) {
+                msg.className = 'note bad';
+                msg.innerHTML += ` Google couldn’t be reached to revoke the old connection, so check ${CONNECTIONS} and remove this site there.`;
+            } else {
+                window.__GRAV_TOAST?.success?.(`Added ${name}`);
+            }
             this._renderList();
             this.shadowRoot.querySelector(`[data-key="${cssEsc(`${type === 'oauth' ? 'connect' : 'test'}:${name}`)}"]`)?.focus();
         } catch (e) {
@@ -348,11 +380,13 @@ class GdriveAccounts extends HTMLElement {
         }
         if (!this._data) return '<p class="muted">Loading accounts…</p>';
         const { accounts = [], wanted = [] } = this._data;
+        const ln = this._listNote;
+        const listNote = ln ? `<p class="note ${ln.ok ? 'ok' : 'warn'}" role="status">${ln.html}</p>` : '';
         const wantedHtml = wanted.length ? `<p class="note warn">Plugins expect ${wanted.map((w) =>
             `<button type="button" class="linkish" data-prefill="${esc(w)}" aria-label="Add an account named ${esc(w)}"><code>${esc(w)}</code></button>`).join(', ')}, which
             ${wanted.length === 1 ? 'doesn’t' : 'don’t'} exist yet. Add ${wanted.length === 1 ? 'it' : 'them'} below.</p>` : '';
-        if (!accounts.length) return `${wantedHtml}<p class="muted">No accounts yet. Add one below.</p>`;
-        return wantedHtml + accounts.map((a) => this._rowHtml(a)).join('');
+        if (!accounts.length) return `${listNote}${wantedHtml}<p class="muted">No accounts yet. Add one below.</p>`;
+        return listNote + wantedHtml + accounts.map((a) => this._rowHtml(a)).join('');
     }
 
     _rowHtml(a) {

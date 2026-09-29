@@ -8,7 +8,8 @@ use Grav\Common\Cache;
 
 /**
  * Service-account credentials. No SDK: an RS256 JWT signed with openssl_sign
- * is swapped for an access token at the key's token_uri.
+ * is swapped for an access token at Google's token endpoint (never the key's
+ * token_uri: that's only checked to be Google's).
  */
 final class ServiceAccount implements Credentials
 {
@@ -34,7 +35,7 @@ final class ServiceAccount implements Credentials
         $json = @file_get_contents($path);
         $sa = $json === false ? null : json_decode($json, true);
         if (!is_array($sa)) {
-            throw new DriveException("gdrive: cannot read the service-account key {$path}", 'bad_credential');
+            throw new DriveException("The service-account key file couldn't be read. Upload it again on the Accounts tab.", 'bad_credential');
         }
 
         return new self(self::validateKey($sa), $cache, $http);
@@ -55,8 +56,8 @@ final class ServiceAccount implements Credentials
         if (openssl_pkey_get_private($json['private_key']) === false) {
             throw new DriveException('The service-account key\'s private_key is not a readable PEM key. Upload the file Google gave you unchanged.', 'bad_credential');
         }
-        if (isset($json['token_uri']) && !str_starts_with((string) $json['token_uri'], 'https://')) {
-            throw new DriveException('The service-account key\'s token_uri must be https.', 'bad_credential');
+        if (isset($json['token_uri']) && !in_array($json['token_uri'], OAuthUser::GOOGLE_TOKEN_URIS, true)) {
+            throw new DriveException(OAuthUser::NOT_GOOGLE, 'bad_credential');
         }
 
         return $json;
@@ -74,7 +75,7 @@ final class ServiceAccount implements Credentials
         $claims = $b64((string) json_encode([
             'iss' => $sa['client_email'],
             'scope' => implode(' ', $scopes),
-            'aud' => $sa['token_uri'] ?? self::TOKEN_URI,
+            'aud' => self::TOKEN_URI, // what Google expects, whatever the key file says
             'iat' => $now,
             'exp' => $now + 3600,
         ]));
@@ -100,7 +101,7 @@ final class ServiceAccount implements Credentials
             return $cached;
         }
 
-        [$status, $body] = ($this->http)('POST', (string) ($this->sa['token_uri'] ?? self::TOKEN_URI), [
+        [$status, $body] = ($this->http)('POST', self::TOKEN_URI, [
             'headers' => ['Content-Type: application/x-www-form-urlencoded'],
             'body' => http_build_query([
                 'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',

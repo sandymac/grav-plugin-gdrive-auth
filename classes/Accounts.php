@@ -21,6 +21,7 @@ final class Accounts
     public const NAME = '/^[a-z0-9][a-z0-9_-]{0,31}$/';
     public const TYPES = ['service_account', 'oauth'];
     private const STATE_TTL = 600;
+    public const REVOKE_FAILED = "Google couldn't be reached, so check Google Account → Third-party connections (https://myaccount.google.com/connections) and remove this site there.";
 
     /** @var callable(string, string, array): array{int, string, array<string, string>} */
     private $http;
@@ -120,9 +121,13 @@ final class Accounts
      * Validates and stores an uploaded credential (0600, fixed filename) and
      * records the account in this instance's config(). The JSON is never
      * logged or echoed; the error messages only say what kind was expected.
+     *
+     * @return string '' or, when replacing a connection whose token Google
+     *   couldn't revoke, a warning for the admin (the files are replaced anyway)
      */
-    public function saveCredential(string $name, string $type, string $json): void
+    public function saveCredential(string $name, string $type, string $json): string
     {
+        $revoked = true;
         $config = self::configWith($this->config, $name, $type);
         $data = json_decode($json, true);
         if (!is_array($data)) {
@@ -130,14 +135,14 @@ final class Accounts
         }
         if ($type === 'service_account') {
             ServiceAccount::validateKey($data);
-            $this->revokeQuietly($name); // still typed as before, so an old OAuth token is revoked
+            $revoked = $this->revokeQuietly($name); // still typed as before, so an old OAuth token is revoked
             @unlink($this->file($name, 'client'));
             @unlink($this->file($name, 'token'));
         } else {
             $web = OAuthUser::validateClient($data);
             $old = json_decode((string) @file_get_contents($this->file($name, 'client')), true);
             if (($old['web']['client_id'] ?? null) !== $web['client_id']) {
-                $this->revokeQuietly($name); // a token only works with the client that issued it
+                $revoked = $this->revokeQuietly($name); // a token only works with the client that issued it
                 @unlink($this->file($name, 'token'));
             }
             @unlink($this->file($name, 'sa'));
@@ -145,17 +150,25 @@ final class Accounts
         self::writeSecret($this->file($name, $type === 'oauth' ? 'client' : 'sa'), (string) json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         $this->config = $config;
         unset($this->creds[$name]);
+
+        return $revoked ? '' : "Saved. The old connection's access at Google wasn't revoked: " . self::REVOKE_FAILED;
     }
 
-    /** Revokes an OAuth token (best effort), deletes the account's files, and drops it from config(). */
-    public function remove(string $name): void
+    /**
+     * Revokes an OAuth token (best effort), deletes the account's files, and drops it from config().
+     *
+     * @return string '' or, when Google couldn't revoke the token, a warning for the admin (the files are deleted anyway)
+     */
+    public function remove(string $name): string
     {
         self::check($name);
-        $this->revokeQuietly($name);
+        $revoked = $this->revokeQuietly($name);
         foreach (['sa', 'client', 'token'] as $kind) {
             @unlink($this->file($name, $kind));
         }
         unset($this->creds[$name], $this->config['accounts'][$name]);
+
+        return $revoked ? '' : 'Removed from this site. ' . self::REVOKE_FAILED;
     }
 
     /**
@@ -244,26 +257,20 @@ final class Accounts
      * Completes a Connect from Google's redirect. The state file is deleted
      * before it's used, so a replayed or raced callback fails with bad_state.
      *
+     * @param ?string $account set to the account once the state checks out, so a failure can still say which
+     * @param-out string $account
      * @return array status() plus the admin `username` who started it
      */
-    public function finishConnect(string $state, string $code): array
+    public function finishConnect(string $state, string $code, ?string &$account = null): array
     {
-        $file = preg_match('/^[0-9a-f]{64}$/', $state) === 1 ? $this->stateFile($state) : '';
-        $raw = $file !== '' && is_file($file) ? @file_get_contents($file) : false;
-        if ($raw === false || !@unlink($file)) { // only one caller can win the unlink
-            throw new DriveException('gdrive: unknown or already used OAuth state', 'bad_state');
-        }
-        $pending = json_decode($raw, true);
-        if (!is_array($pending) || (int) ($pending['expires'] ?? 0) < time() || !is_string($pending['account'] ?? null)) {
-            throw new DriveException('gdrive: expired OAuth state; click Connect again', 'bad_state');
-        }
-        $name = $pending['account'];
+        $pending = $this->takeState($state);
+        $name = $account = (string) $pending['account'];
         $creds = $this->credentials($name);
         if (!$creds instanceof OAuthUser) {
             throw new DriveException("gdrive: '{$name}' is no longer an OAuth account", 'bad_state');
         }
 
-        $token = $creds->exchange($code, (string) $pending['verifier'], (string) $pending['redirect_uri']);
+        $token = $creds->exchange($code, (string) ($pending['verifier'] ?? ''), (string) ($pending['redirect_uri'] ?? ''));
         [$status, $body] = ($this->http)('GET', Drive::API . '/about?fields=user(emailAddress)', ['headers' => ['Authorization: Bearer ' . $token['access_token']]]);
         $about = json_decode($body, true);
         $email = is_array($about) ? (string) ($about['user']['emailAddress'] ?? '') : '';
@@ -273,6 +280,37 @@ final class Accounts
         $creds->saveToken($token, $email);
 
         return $this->status($name) + ['username' => (string) ($pending['username'] ?? '')];
+    }
+
+    /** Consumes the state of a Connect that Google reports as failed (e.g. cancelled); returns its account, or null. */
+    public function cancelConnect(string $state): ?string
+    {
+        try {
+            return (string) $this->takeState($state)['account'];
+        } catch (DriveException) {
+            return null;
+        }
+    }
+
+    /**
+     * The pending Connect for $state, deleted before it's returned: only one
+     * caller can win the unlink, so a replayed or raced callback gets bad_state.
+     *
+     * @return array<string, mixed> with a string `account`
+     */
+    private function takeState(string $state): array
+    {
+        $file = preg_match('/^[0-9a-f]{64}$/', $state) === 1 ? $this->stateFile($state) : '';
+        $raw = $file !== '' && is_file($file) ? @file_get_contents($file) : false;
+        if ($raw === false || !@unlink($file)) {
+            throw new DriveException('gdrive: unknown or already used OAuth state', 'bad_state');
+        }
+        $pending = json_decode($raw, true);
+        if (!is_array($pending) || (int) ($pending['expires'] ?? 0) < time() || !is_string($pending['account'] ?? null)) {
+            throw new DriveException('gdrive: expired OAuth state; click Connect again', 'bad_state');
+        }
+
+        return $pending;
     }
 
     /**
@@ -330,15 +368,19 @@ final class Accounts
         }
     }
 
-    private function revokeQuietly(string $name): void
+    /** False when there was a token and Google didn't confirm revoking it (refused, or unreachable). */
+    private function revokeQuietly(string $name): bool
     {
+        $hadToken = is_file($this->file($name, 'token'));
         try {
             $creds = $this->credentials($name);
             if ($creds instanceof OAuthUser) {
                 $creds->revoke();
             }
+
+            return true;
         } catch (\RuntimeException) {
-            // best effort: the files are deleted either way
+            return !$hadToken; // the files are deleted either way
         }
     }
 }

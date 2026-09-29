@@ -21,7 +21,16 @@ use RocketTheme\Toolbox\File\AbstractFile;
  */
 class GdrivePlugin extends Plugin
 {
-    public const VERSION = '0.1.11';
+    public const VERSION = '0.1.12';
+
+    /** The callback's failure text by reason: fixed strings only, never the exception's message. '' is everything else. */
+    private const CONNECT_FAILED = [
+        'access_denied' => "You cancelled Google's sign-in. Close this window, then click Connect to try again.",
+        'redirect_uri_mismatch' => "Google rejected this site's return address. Close this window and see redirect_uri_mismatch under Troubleshooting.",
+        'bad_state' => 'This sign-in link expired or was already used. Close this window and click Connect again.',
+        'consent' => 'Google Drive could not be connected. Close this window and click Connect again.',
+        '' => 'Google Drive could not be connected. Close this window and click Connect again.',
+    ];
 
     public static function getSubscribedEvents(): array
     {
@@ -111,27 +120,40 @@ class GdrivePlugin extends Plugin
     /**
      * Google's redirect after consent. It carries no admin login (Admin2 uses
      * an in-memory bearer token), so the single-use server-side state is the
-     * only thing trusted. Failures get a generic 400; the reason goes to the log.
+     * only thing trusted. Failures get a generic 400 whose text is picked
+     * from CONNECT_FAILED by reason; the details go to the log.
      */
     public function callback(): void
     {
         $uri = $this->grav['uri'];
+        $state = (string) ($uri->query('state') ?? '');
+        $account = null; // set only once the state checks out
         try {
             $error = $uri->query('error');
             if (is_string($error) && $error !== '') {
+                $account = Gdrive::accounts()->cancelConnect($state);
+                if ($error === 'access_denied') {
+                    throw new DriveException('Google sign-in was cancelled', 'access_denied');
+                }
                 throw new DriveException('Google returned error ' . substr((string) preg_replace('/[^\w.-]/', '', $error), 0, 64), 'consent');
             }
-            $status = Gdrive::accounts()->finishConnect((string) ($uri->query('state') ?? ''), (string) ($uri->query('code') ?? ''));
+            $status = Gdrive::accounts()->finishConnect($state, (string) ($uri->query('code') ?? ''), $account);
             $this->grav['log']->info(sprintf('gdrive: account %s connected as %s by %s', $status['name'], (string) $status['email'], $status['username']));
-            $this->respond(200, 'Connected as ' . htmlspecialchars((string) $status['email'], ENT_QUOTES) . '. You can close this window.', $status['name']);
+            $this->respond(200, 'Connected as ' . htmlspecialchars((string) $status['email'], ENT_QUOTES) . '. You can close this window.', ['gdrive' => 'connected', 'account' => $status['name']]);
         } catch (\Throwable $e) {
             $this->grav['log']->warning('gdrive: OAuth callback refused: ' . $e->getMessage());
-            $this->respond(400, 'Google Drive could not be connected. Close this window and click Connect again.', null);
+            $reason = $e instanceof DriveException && isset(self::CONNECT_FAILED[$e->reason]) ? $e->reason : '';
+            $this->respond(400, self::CONNECT_FAILED[$reason], ['gdrive' => 'error', 'account' => $account, 'reason' => $reason]);
         }
     }
 
-    /** A tiny self-contained page; on success it tells the opener (same origin only) to refresh. */
-    private function respond(int $code, string $html, ?string $account): never
+    /**
+     * A tiny self-contained page that tells the opener (same origin only) how
+     * it went; on success it also closes itself, after a moment to read it.
+     *
+     * @param array{gdrive: string, account: ?string, reason?: string} $message
+     */
+    private function respond(int $code, string $html, array $message): never
     {
         $nonce = base64_encode(random_bytes(16));
         http_response_code($code);
@@ -140,10 +162,11 @@ class GdrivePlugin extends Plugin
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: no-referrer'); // the URL carried the code and state
         header("Content-Security-Policy: default-src 'none'; script-src 'nonce-{$nonce}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
-        $script = $account === null ? '' : sprintf(
-            '<script nonce="%s">window.opener && window.opener.postMessage({gdrive: "connected", account: %s}, location.origin);</script>',
+        $script = sprintf(
+            '<script nonce="%s">window.opener && window.opener.postMessage(%s, location.origin);%s</script>',
             $nonce,
-            json_encode($account, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)
+            json_encode($message, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
+            $code === 200 ? ' setTimeout(function () { window.close(); }, 1500);' : ''
         );
         echo "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Google Drive</title></head><body><p>{$html}</p>{$script}</body></html>";
         exit;

@@ -16,9 +16,10 @@
 const TAG = window.__GRAV_FIELD_TAG;
 const KEY = 'gdrive.guide.v1';
 const PROJECT_RE = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
-// Addresses that can't be Google Workspace. ponytail: a short list; any other domain pre-selects Workspace, and the radio corrects it.
+// Addresses that can't be Google Workspace. Any other domain is no guess: a personal account can use its own address.
 const PERSONAL_RE = /@(gmail|googlemail|outlook|hotmail|live|msn|yahoo|ymail|icloud|me|mac|aol|proton|protonmail|gmx)(\.[a-z]+)+$/i;
-const DEFAULTS = { email: '', kind: 'gmail', shared_drive: '', admin: '', method: '', project: '' };
+// kindChosen: the viewer clicked a kind, so the email never overrides it again.
+const DEFAULTS = { email: '', kind: 'gmail', kindChosen: false, shared_drive: '', admin: '', method: '', project: '' };
 const CHOICES = { kind: ['gmail', 'workspace'], shared_drive: ['', 'yes', 'no', 'unsure'], admin: ['', 'yes', 'no'], method: ['', 'oauth', 'sa'] };
 
 class GdriveGuide extends HTMLElement {
@@ -126,12 +127,12 @@ class GdriveGuide extends HTMLElement {
     _onInput(e) {
         const t = e.target;
         if (t.id === 'email') {
-            const kind = kindOf(t.value);
+            const kind = this._state.kindChosen ? null : kindOf(t.value);
             this._set(kind ? { email: t.value, kind } : { email: t.value });
         } else if (t.id === 'project') {
             this._set({ project: t.value.trim() });
         } else if (t.type === 'radio' && t.checked && t.name in CHOICES) {
-            this._set({ [t.name]: t.value });
+            this._set(t.name === 'kind' ? { kind: t.value, kindChosen: true } : { [t.name]: t.value });
         }
     }
 
@@ -145,7 +146,9 @@ class GdriveGuide extends HTMLElement {
                 <div class="q">
                     <label for="email" class="ql">Which Google account will you use?</label>
                     <input id="email" type="email" autocomplete="email" spellcheck="false" placeholder="you@gmail.com" aria-describedby="email-hint">
-                    <span class="hint" id="email-hint">Only used here, in your browser, to guess the kind of account below. It isn’t sent anywhere.</span>
+                    <span class="hint" id="email-hint">Only used here, in your browser, to guess the kind of account. It isn’t sent anywhere.
+                        Choose <strong>Personal</strong> for a Google account you made yourself, even if its address isn’t @gmail.com.
+                        Choose <strong>Workspace</strong> only if a company or school manages it.</span>
                     <fieldset>
                         <legend class="sr">Kind of Google account</legend>
                         ${radio('kind', 'gmail', 'Personal Google account (Gmail, or a personal account on your own email address)')}
@@ -232,11 +235,10 @@ class GdriveGuide extends HTMLElement {
     }
 }
 
-/** 'gmail' | 'workspace' from a complete-looking address, else null (keep the current choice). */
+/** 'gmail' for a complete-looking consumer address, else null (keep the current choice). */
 function kindOf(email) {
     const e = String(email).trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return null;
-    return PERSONAL_RE.test(e) ? 'gmail' : 'workspace';
+    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e) && PERSONAL_RE.test(e) ? 'gmail' : null;
 }
 
 function load() {
@@ -245,7 +247,8 @@ function load() {
     const s = { ...DEFAULTS };
     for (const k of Object.keys(DEFAULTS)) {
         const v = saved[k];
-        if (typeof v === 'string' && (!CHOICES[k] || CHOICES[k].includes(v))) s[k] = v.slice(0, 254);
+        if (k === 'kindChosen') s[k] = v === true;
+        else if (typeof v === 'string' && (!CHOICES[k] || CHOICES[k].includes(v))) s[k] = v.slice(0, 254);
     }
     return s;
 }

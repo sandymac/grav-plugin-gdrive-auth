@@ -125,7 +125,45 @@ check($slept[0] >= 1 && $slept[0] <= 2, 'first backoff is 1s plus jitter');
 
 // --- Http::curl: a per-request timeout caps connect and transfer (a blackholed address, or no network: fails fast either way).
 $t0 = microtime(true);
-check(reason(static fn () => Http::curl('GET', 'http://10.255.255.1/', ['timeout' => 1])) === 'transport' && microtime(true) - $t0 < 3, 'curl with timeout 1 gives up within a few seconds');
+try {
+    Http::curl('PUT', 'https://10.255.255.1/upload/drive/v3/files?uploadType=resumable&upload_id=SECRET', ['timeout' => 1]);
+    check(false, 'curl to a blackholed address must fail');
+} catch (DriveException $e) {
+    check($e->reason === 'transport' && microtime(true) - $t0 < 3, 'curl with timeout 1 gives up within a few seconds');
+    check(str_contains($e->getMessage(), '10.255.255.1') && !str_contains($e->getMessage(), '?') && !str_contains($e->getMessage(), 'upload_id') && !str_contains($e->getMessage(), '/upload'), 'a transport error names the host only, never the path, query or upload session');
+}
+check(reason(static fn () => Http::curl('GET', 'http://10.255.255.1/', ['timeout' => 1])) === 'transport', 'curl refuses plain http');
+
+// --- Google's endpoints are pinned: a doctored auth_uri/token_uri is refused at upload and ignored at runtime.
+$web = ['client_id' => 'cid', 'client_secret' => 'shh'];
+foreach (OAuthUser::GOOGLE_AUTH_URIS as $u) {
+    check(reason(static fn () => OAuthUser::validateClient(['web' => $web + ['auth_uri' => $u]])) === null, "Google's auth_uri {$u} is accepted");
+}
+foreach (OAuthUser::GOOGLE_TOKEN_URIS as $u) {
+    check(reason(static fn () => OAuthUser::validateClient(['web' => $web + ['token_uri' => $u]])) === null, "Google's token_uri {$u} is accepted");
+    check(reason(static fn () => ServiceAccount::validateKey(['token_uri' => $u] + $sa)) === null, "an SA key with Google's token_uri {$u} is accepted");
+}
+foreach (['https://evil.example/auth', 'https://accounts.google.com.evil.example/o/oauth2/auth', 'http://accounts.google.com/o/oauth2/auth'] as $u) {
+    check(reason(static fn () => OAuthUser::validateClient(['web' => $web + ['auth_uri' => $u]])) === 'bad_credential', "auth_uri {$u} is refused");
+    check(reason(static fn () => OAuthUser::validateClient(['web' => $web + ['token_uri' => $u]])) === 'bad_credential', "token_uri {$u} is refused");
+    check(reason(static fn () => ServiceAccount::validateKey(['token_uri' => $u] + $sa)) === 'bad_credential', "an SA key with token_uri {$u} is refused");
+}
+$saw = [];
+$spy = static function (string $method, string $url) use (&$saw): array {
+    $saw[] = $url;
+
+    return [200, '{"access_token":"t","refresh_token":"r","expires_in":3599}', []];
+};
+$evil = ['auth_uri' => 'https://evil.example/auth', 'token_uri' => 'https://evil.example/token'];
+$pinned = new OAuthUser($web + $evil, sys_get_temp_dir() . '/gdrive-smoke-none.json', null, $spy);
+check(str_starts_with($pinned->authUrl([Drive::SCOPE_FILE], 'https://example.com/cb', 's', 'c'), OAuthUser::AUTH_URI . '?'), 'authUrl() ignores a stored non-Google auth_uri');
+$pinned->exchange('code', 'verifier', 'https://example.com/cb');
+check($saw === [OAuthUser::TOKEN_URI], 'the code exchange ignores a stored non-Google token_uri');
+$saw = [];
+(new ServiceAccount(['token_uri' => 'https://evil.example/token'] + $sa, null, $spy))->token([Drive::SCOPE_FILE]);
+check($saw === [ServiceAccount::TOKEN_URI], 'the SA token exchange ignores a stored non-Google token_uri');
+[, $evilClaims] = explode('.', ServiceAccount::jwt(['token_uri' => 'https://evil.example/token'] + $sa, [Drive::SCOPE_FILE], 1_700_000_000));
+check(json_decode($b64d($evilClaims), true)['aud'] === ServiceAccount::TOKEN_URI, 'the JWT aud is always Google\'s token endpoint');
 
 // --- Drive: 401 → forget → one retry; upload is a resumable POST then one streamed PUT.
 $fakeCreds = new class () implements Credentials {
@@ -246,10 +284,15 @@ check($aq['response_type'] === 'code' && $aq['access_type'] === 'offline' && $aq
 check(strlen($aq['state']) === 64 && is_file($tmp . '/oauth-state/' . hash('sha256', $aq['state']) . '.json'), 'state is 32 random bytes, stored by its sha256');
 check(!str_contains((string) file_get_contents($tmp . '/oauth-state/' . hash('sha256', $aq['state']) . '.json'), $aq['state']), 'the raw state is never written to disk');
 
-$done = $accounts->finishConnect($aq['state'], 'CODE');
+$connecting = null;
+$done = $accounts->finishConnect($aq['state'], 'CODE', $connecting);
+check($connecting === 'personal', 'finishConnect() reports the account once the state checks out');
 check($done['connected'] && $done['email'] === 'me@gmail.com' && $done['scopes'] === [Drive::SCOPE_FILE] && $done['username'] === 'admin', 'finishConnect saves the token and reports who connected');
 check(reason(static fn () => $accounts->finishConnect($aq['state'], 'CODE')) === 'bad_state', 'a state works once only');
 check(reason(static fn () => $accounts->finishConnect('nonsense', 'CODE')) === 'bad_state', 'an unknown state is refused');
+$cancelUrl = $accounts->startConnect('personal', [Drive::SCOPE_FILE], 'https://example.com/gdrive-oauth/callback', 'admin');
+parse_str((string) parse_url($cancelUrl, PHP_URL_QUERY), $cq);
+check($accounts->cancelConnect($cq['state']) === 'personal' && $accounts->cancelConnect($cq['state']) === null && $accounts->cancelConnect('nonsense') === null, 'cancelConnect() consumes a valid state once and names its account');
 $token = json_decode((string) file_get_contents($tmp . '/personal.token.json'), true);
 check($token['refresh_token'] === 'R1' && $token['email'] === 'me@gmail.com' && $token['scopes'] === [Drive::SCOPE_FILE], 'token file holds refresh token, scopes, email');
 
@@ -291,9 +334,32 @@ Accounts::writeSecret($tf, (string) json_encode($tj));
 $bad = (new Accounts(['accounts' => ['site' => ['type' => 'service_account']]], $tmp, null, static fn (): array => [400, '{"error":"invalid_grant"}', []]))->test('site', [Drive::SCOPE_FILE]);
 check($bad['ok'] === false && $bad['reason'] === 'invalid_grant' && $bad['anchor'] === 'invalid-grant', 'test() reports the reason and anchor');
 
-$accounts->remove('personal');
+check($accounts->remove('personal') === '', 'remove() warns about nothing when Google revoked the token');
 check(!is_file($tmp . '/personal.token.json') && !is_file($tmp . '/personal.client.json') && !isset($accounts->config()['accounts']['personal']), 'remove() deletes the files and the config entry');
 check(count(array_filter($googleCalls, static fn (array $c): bool => str_contains($c[0], '/revoke') && $c[1]['token'] === 'R1')) === 1, 'remove() revokes the refresh token first');
+
+// --- remove() and a client swap don't claim a revoke Google didn't confirm; the files go either way.
+foreach (['unreachable' => new DriveException('gdrive: could not reach oauth2.googleapis.com (POST: timeout)', 'transport'), 'refused' => [503, '', []]] as $how => $revokeReply) {
+    $failing = new Accounts(['accounts' => ['gone' => ['type' => 'oauth']]], $tmp, null, static function (string $method, string $url) use ($revokeReply): array {
+        if (str_contains($url, '/revoke') && $revokeReply instanceof DriveException) {
+            throw $revokeReply;
+        }
+
+        return str_contains($url, '/revoke') ? $revokeReply : [404, '', []];
+    });
+    $plant = static function () use ($tmp, $client): void {
+        Accounts::writeSecret($tmp . '/gone.client.json', (string) json_encode($client));
+        Accounts::writeSecret($tmp . '/gone.token.json', '{"refresh_token":"RG","scopes":[],"email":"g@gmail.com"}');
+    };
+    $plant();
+    $warning = $failing->remove('gone');
+    check(str_contains($warning, 'myaccount.google.com/connections') && !is_file($tmp . '/gone.token.json') && !is_file($tmp . '/gone.client.json'), "remove() warns when the revoke was {$how}, and deletes the files anyway");
+    $plant();
+    $otherClient = (string) json_encode(['web' => ['client_id' => 'other-client'] + $client['web']]);
+    check(str_contains($failing->saveCredential('gone', 'oauth', $otherClient), 'myaccount.google.com/connections') && !is_file($tmp . '/gone.token.json'), "a new client_id warns when revoking the old token was {$how}");
+    check($failing->saveCredential('gone', 'oauth', $otherClient) === '', 'saving the same client again warns about nothing');
+    $failing->remove('gone');
+}
 
 // --- Setup: the settings page's rows, renderers and body validation (no Grav booted here).
 $decl = [

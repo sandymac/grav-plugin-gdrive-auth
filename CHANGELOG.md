@@ -1,3 +1,16 @@
+# v0.1.12
+## 09/29/2026
+
+1. [](#bugfix)
+    * **Security:** an uploaded OAuth client or service-account key can no longer point sign-in or token requests at a server other than Google's. Only Google's own `auth_uri`/`token_uri` values are accepted, and requests always go to Google's fixed endpoints (curl is HTTPS-only). Previously an edited JSON with another https address would have received the client secret, codes and refresh tokens.
+    * **Remove** no longer claims Google's access was revoked when Google couldn't be reached or refused: `Accounts::remove()` (and `saveCredential()` when swapping the client) returns a warning, the endpoint returns it as `warning`, and the Accounts tab says to check Google Account → Third-party connections.
+    * Guided setup no longer overrides the kind of account you chose when you edit the email, and no longer guesses Workspace for any address that isn't Gmail-like.
+    * Transport errors name only the host (never a path, query or upload session URL), and an unreadable service-account key no longer shows its server path.
+2. [](#improved)
+    * The Connect window closes itself after connecting, and a failure says why (cancelled, `redirect_uri_mismatch`, an expired link) on the window and on the Accounts tab, with a Troubleshooting link. A window closed early says so.
+    * `Accounts::finishConnect()` can report the account (optional by-reference argument); `Accounts::cancelConnect()` consumes a cancelled Connect's state.
+    * Setup guides: consent-step wording, OAuth's `drive.file` read limits in the **Start here** table, and a note that Grav's backups include `user/data/gdrive/`.
+
 # v0.1.11
 ## 09/29/2026
 

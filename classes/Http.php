@@ -36,6 +36,8 @@ final class Http
             CURLOPT_CUSTOMREQUEST => $method,
             CURLOPT_HTTPHEADER => $opts['headers'] ?? [],
             CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+            CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
             CURLOPT_CONNECTTIMEOUT => min($cap, 15),
             // Uploads can be large backups; anything else that runs this long is stuck.
             CURLOPT_TIMEOUT => min($cap, isset($opts['infile']) ? 3600 : 300),
@@ -72,7 +74,10 @@ final class Http
         $error = curl_error($ch);
         curl_close($ch);
         if ($body === false) {
-            throw new DriveException("gdrive: {$method} {$url}: {$error}", 'transport');
+            // Host only: a path or query can carry ids, and a resumable session URL is a bearer credential.
+            $host = (string) (parse_url($url, PHP_URL_HOST) ?: 'Google');
+            $error = (string) preg_replace('~\w+://\S*~', '…', $error);
+            throw new DriveException("gdrive: could not reach {$host} ({$method}: {$error})", 'transport');
         }
 
         return [$status, is_string($body) ? $body : '', $headers];

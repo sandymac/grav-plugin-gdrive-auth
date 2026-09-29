@@ -46,15 +46,15 @@ final class Api extends AbstractApiController
 
         return $this->guard(function () use ($body): ResponseInterface {
             $accounts = Gdrive::accounts();
-            $accounts->saveCredential($body['name'], $body['type'], $body['json']);
+            $warning = $accounts->saveCredential($body['name'], $body['type'], $body['json']);
             @unlink($this->testFile($body['name'])); // it described the old credential
             $this->persist($accounts->config());
 
-            return ApiResponse::create($this->view(), 201);
+            return ApiResponse::create($this->view() + ['warning' => $warning], 201);
         });
     }
 
-    /** DELETE /gdrive/accounts/{name}: revoke (OAuth), delete the files, drop it from config. */
+    /** DELETE /gdrive/accounts/{name}: revoke (OAuth), delete the files, drop it from config; `warning` says if the revoke failed. */
     public function remove(ServerRequestInterface $request): ResponseInterface
     {
         $this->requirePermission($request, self::PERMISSION);
@@ -63,11 +63,11 @@ final class Api extends AbstractApiController
         return $this->guard(function () use ($name): ResponseInterface {
             $accounts = Gdrive::accounts();
             $accounts->type($name);
-            $accounts->remove($name);
+            $warning = $accounts->remove($name);
             @unlink($this->testFile($name));
             $this->persist($accounts->config());
 
-            return ApiResponse::create($this->view());
+            return ApiResponse::create($this->view() + ['warning' => $warning]);
         });
     }
 

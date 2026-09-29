@@ -222,8 +222,9 @@ which kind was expected. Common mix-ups:
 
 **Cause.** The Google window came back more than 10 minutes after **Connect**
 was clicked, was used twice (a refresh or the back button), or Google returned
-an error instead of a sign-in. The window only says "could not be connected";
-the site's log has the reason.
+an error instead of a sign-in. The window says the sign-in link expired or was
+already used (or, for a Google error, that it could not be connected); the
+site's log has the reason.
 
 **Fix.** Close the window and click **Connect** again, and finish within 10
 minutes.
