@@ -398,7 +398,7 @@ class GdriveAccounts extends HTMLElement {
                 if (seen.has(s)) continue;
                 seen.add(s);
                 const users = (a.declared || []).filter((x) => x.scopes.includes(s)).map((x) => x.plugin).join(', ');
-                const cls = missing.has(s) ? 'chip missing' : (a.type === 'oauth' && !granted.has(s) ? 'chip' : 'chip ok');
+                const cls = missing.has(s) ? 'chip missing' : (a.type === 'oauth' && !a.connected ? 'chip' : 'chip ok');
                 const state = missing.has(s) ? 'not granted: reconnect' : (a.type === 'oauth' && !a.connected ? 'not connected yet' : 'ok');
                 chips.push(`<span class="${cls}" title="${esc(`Needed by ${users}: ${state}`)}">${esc(short(s))}${missing.has(s) ? ' <strong>not granted</strong>' : ''}<span class="sr"> (needed by ${esc(users)}, ${esc(state)})</span></span>`);
             }

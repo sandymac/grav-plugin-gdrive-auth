@@ -134,6 +134,22 @@ final class OAuthUser implements Credentials
         return (string) ($this->stored()['email'] ?? '');
     }
 
+    /**
+     * The wanted scopes a grant doesn't cover. `drive` covers `drive.file` and
+     * `drive.readonly`; anything else only covers itself.
+     *
+     * @param string[] $granted
+     * @param string[] $wanted
+     * @return list<string>
+     */
+    public static function missingScopes(array $granted, array $wanted): array
+    {
+        $full = in_array(Drive::SCOPE_FULL, $granted, true);
+
+        return array_values(array_filter($wanted, static fn (string $s): bool => !in_array($s, $granted, true)
+            && !($full && in_array($s, [Drive::SCOPE_FILE, Drive::SCOPE_READONLY], true))));
+    }
+
     /** @param string[] $scopes */
     public function token(array $scopes): string
     {
@@ -141,7 +157,7 @@ final class OAuthUser implements Credentials
         if ($stored === null) {
             throw new DriveException('gdrive: this Google account is not connected; click Connect on the Google Drive Auth settings page.', 'not_connected');
         }
-        $missing = array_diff($scopes, (array) ($stored['scopes'] ?? []));
+        $missing = self::missingScopes((array) ($stored['scopes'] ?? []), $scopes);
         if ($missing !== []) {
             throw new DriveException('gdrive: not granted: ' . implode(' ', $missing) . '. Reconnect the account on the Google Drive Auth settings page to grant it.', 'scope_not_granted');
         }

@@ -395,7 +395,7 @@ final class Setup
                     $row['declared'][] = ['plugin' => $d['plugin'], 'scopes' => $d['scopes']];
                 }
             }
-            $row['missing'] = $row['type'] === 'oauth' && $row['connected'] ? array_values(array_diff(self::declaredScopes($declarations, $name), $row['scopes'])) : [];
+            $row['missing'] = $row['type'] === 'oauth' && $row['connected'] ? OAuthUser::missingScopes($row['scopes'], self::declaredScopes($declarations, $name)) : [];
             $test = json_decode((string) @file_get_contents("{$dataDir}/{$name}.test.json"), true);
             $row['test'] = is_array($test) ? $test : null;
             $rows[] = $row;
@@ -589,7 +589,7 @@ final class Setup
             $row === null => '✘ no such account yet: add it',
             !$row['has_credential'] => '✘ no credential uploaded yet',
             !$row['connected'] => '✘ not connected yet: click Connect',
-            $row['type'] === 'oauth' && array_diff($scopes, $row['scopes']) !== [] => '✘ not granted yet: click Reconnect',
+            $row['type'] === 'oauth' && OAuthUser::missingScopes($row['scopes'], $scopes) !== [] => '✘ not granted yet: click Reconnect',
             $row['test'] !== null && !($row['test']['ok'] ?? false) => '✘ last test failed: `' . self::clean((string) ($row['test']['reason'] ?? 'error')) . '`',
             default => '✔ ready',
         };

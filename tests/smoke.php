@@ -254,6 +254,29 @@ $oauth = $accounts->credentials('personal');
 check(reason(static fn () => $oauth->token([Drive::SCOPE_FULL])) === 'scope_not_granted', 'token() refuses a scope the user did not grant');
 check($oauth->token([Drive::SCOPE_FILE]) === 'refreshed', 'token() refreshes for a granted scope');
 check($accounts->test('personal', [])['ok'] === true, 'test() runs about.get with the granted scopes');
+foreach ([
+    'drive covers drive.file' => [[Drive::SCOPE_FULL], [Drive::SCOPE_FILE], []],
+    'drive covers drive.readonly' => [[Drive::SCOPE_FULL], [Drive::SCOPE_READONLY], []],
+    'drive covers itself' => [[Drive::SCOPE_FULL], [Drive::SCOPE_FULL], []],
+    'drive covers both at once' => [[Drive::SCOPE_FULL], [Drive::SCOPE_FILE, Drive::SCOPE_READONLY], []],
+    'exact match covers itself' => [[Drive::SCOPE_FILE], [Drive::SCOPE_FILE], []],
+    'drive.readonly does not cover drive.file' => [[Drive::SCOPE_READONLY], [Drive::SCOPE_FILE], [Drive::SCOPE_FILE]],
+    'drive.readonly does not cover drive' => [[Drive::SCOPE_READONLY], [Drive::SCOPE_FULL], [Drive::SCOPE_FULL]],
+    'drive.file does not cover drive.readonly' => [[Drive::SCOPE_FILE], [Drive::SCOPE_READONLY], [Drive::SCOPE_READONLY]],
+    'drive.file does not cover drive' => [[Drive::SCOPE_FILE], [Drive::SCOPE_FULL], [Drive::SCOPE_FULL]],
+    'drive does not cover other APIs' => [[Drive::SCOPE_FULL], ['https://www.googleapis.com/auth/gmail.readonly'], ['https://www.googleapis.com/auth/gmail.readonly']],
+    'nothing granted' => [[], [Drive::SCOPE_FILE], [Drive::SCOPE_FILE]],
+    'nothing wanted' => [[], [], []],
+] as $what => [$granted, $wanted, $expect]) {
+    check(OAuthUser::missingScopes($granted, $wanted) === $expect, "missingScopes(): {$what}");
+}
+$tf = $tmp . '/personal.token.json';
+$tj = json_decode((string) file_get_contents($tf), true);
+Accounts::writeSecret($tf, (string) json_encode(['scopes' => [Drive::SCOPE_FULL]] + $tj));
+check($oauth->token([Drive::SCOPE_FILE]) === 'refreshed' && $oauth->token([Drive::SCOPE_READONLY]) === 'refreshed', 'token(): a drive grant satisfies drive.file and drive.readonly');
+$refreshes = array_filter($googleCalls, static fn (array $c): bool => ($c[1]['grant_type'] ?? '') === 'refresh_token');
+check($refreshes !== [] && array_filter($refreshes, static fn (array $c): bool => isset($c[1]['scope'])) === [], 'token refresh sends no scope parameter (Google keeps the granted set)');
+Accounts::writeSecret($tf, (string) json_encode($tj));
 $bad = (new Accounts(['accounts' => ['site' => ['type' => 'service_account']]], $tmp, null, static fn (): array => [400, '{"error":"invalid_grant"}', []]))->test('site', [Drive::SCOPE_FILE]);
 check($bad['ok'] === false && $bad['reason'] === 'invalid_grant' && $bad['anchor'] === 'invalid-grant', 'test() reports the reason and anchor');
 

@@ -1,3 +1,9 @@
+# v0.1.8
+## 09/29/2026
+
+1. [](#bugfix)
+    * An OAuth account granted the full `drive` scope no longer fails with `scope_not_granted` when a plugin asks for `drive.file` or `drive.readonly`: `drive` covers both. The Accounts tab, the **Start here** checklist and **Who uses what** now use the same rule (`OAuthUser::missingScopes()`).
+
 # v0.1.7
 ## 09/29/2026
 

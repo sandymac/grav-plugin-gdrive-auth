@@ -100,7 +100,9 @@ Extends `\RuntimeException`. Every failure is one of these.
   (`storageQuotaExceeded` → `storage-quota-exceeded`).
 
 `Gdrive::drive()` throws `scope_not_granted` (reconnect to grant it) when an
-OAuth account lacks a scope, on the first call that needs a token.
+OAuth account lacks a scope, on the first call that needs a token. A granted
+`drive` covers `drive.file` and `drive.readonly`; any other scope only covers
+itself.
 
 ### The `onGdriveScopes` event
 
