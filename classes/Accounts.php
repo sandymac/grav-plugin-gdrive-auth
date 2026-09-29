@@ -30,7 +30,7 @@ final class Accounts
 
     /**
      * @param array $config plugins.gdrive-auth
-     * @param string $dataDir resolved user://data/gdrive
+     * @param string $dataDir resolved user://data/gdrive/auth
      * @param callable(string, string, array): array{int, string, array<string, string>} $http
      */
     public function __construct(private array $config, private string $dataDir, private ?Cache $cache, callable $http)

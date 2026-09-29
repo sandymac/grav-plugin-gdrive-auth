@@ -1,3 +1,10 @@
+# v0.1.15
+## 09/29/2026
+
+1. [](#improved)
+    * Credentials moved from `user/data/gdrive/` into its `auth/` subdirectory (`user/data/gdrive/auth/<name>.{sa,client,token,test}.json` and `oauth-state/`): the family's data directory gets one subdirectory per plugin, and a backup exclusion of `/user/data/gdrive/auth` covers exactly the secrets.
+    * **Upgrade:** move the files by hand: create `user/data/gdrive/auth/` writable by the web server, then move `*.sa.json`, `*.client.json`, `*.token.json`, `*.test.json` and `oauth-state/` into it. There is no automatic migration.
+
 # v0.1.14
 ## 09/29/2026
 

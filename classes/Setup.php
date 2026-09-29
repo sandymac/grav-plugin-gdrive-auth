@@ -465,10 +465,10 @@ final class Setup
         }
     }
 
-    /** @internal resolved user://data/gdrive */
+    /** @internal resolved user://data/gdrive/auth */
     public static function dataDir(): string
     {
-        return (string) Grav::instance()['locator']->findResource('user://data/gdrive', true, true);
+        return (string) Grav::instance()['locator']->findResource('user://data/gdrive/auth', true, true);
     }
 
     /** Placeholder values for the guides; each one falls back on its own. */

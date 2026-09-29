@@ -28,9 +28,9 @@ A few things that are true whichever kind you pick:
   guides start by creating a project (or reusing one) and turning on the Google
   Drive API in it. Setup is free, and so is normal Drive API use.
 - **Credentials never go in config files.** The key or client file you upload is
-  checked, then stored in `user/data/gdrive/` with owner-only permissions. The
+  checked, then stored in `user/data/gdrive/auth/` with owner-only permissions. The
   settings page never shows it again, only the account's email and status.
-  Grav's own backups include `user/data/gdrive/`, so treat backup zips like
+  Grav's own backups include `user/data/gdrive/auth/`, so treat backup zips like
   passwords, or exclude that folder in Configuration → Backups (you'll then
   reconnect after a restore).
 - **Make sure your web server refuses `user/data/`.** Grav's standard

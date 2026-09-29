@@ -37,7 +37,7 @@ final class Gdrive
     {
         if (self::$accounts === null) {
             $grav = Grav::instance();
-            $dir = (string) $grav['locator']->findResource('user://data/gdrive', true, true);
+            $dir = (string) $grav['locator']->findResource('user://data/gdrive/auth', true, true);
             if (!is_dir($dir)) {
                 @mkdir($dir, 0700, true);
             }
