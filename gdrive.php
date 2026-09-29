@@ -21,7 +21,7 @@ use RocketTheme\Toolbox\File\AbstractFile;
  */
 class GdrivePlugin extends Plugin
 {
-    public const VERSION = '0.1.4';
+    public const VERSION = '0.1.5';
 
     public static function getSubscribedEvents(): array
     {
@@ -99,6 +99,10 @@ class GdrivePlugin extends Plugin
     /** Admin2 is API-driven, so there's nothing to skip for admin; only the callback path is intercepted. */
     public function onPluginsInitialized(): void
     {
+        // Admin2 resolves data-options@ through the API's /data/resolve, which only
+        // calls allowlisted providers. accountOptions() is read-only and carries no emails.
+        \Grav\Common\Data\Blueprint::addAllowedDynamicCallable(\Grav\Plugin\Gdrive\Setup::class . '::accountOptions');
+
         if ((string) $this->grav['uri']->path() === Gdrive::CALLBACK) {
             $this->enable(['onPagesInitialized' => ['callback', 100000]]);
         }

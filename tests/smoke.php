@@ -276,10 +276,13 @@ check(($rows[0]['test']['reason'] ?? '') === 'notFound', 'rows() includes the la
 check(!str_contains((string) json_encode($rows), 'PRIVATE KEY') && !str_contains((string) json_encode($rows), 'private_key'), 'rows() carry no secret');
 
 $opts = Setup::options([
-    ['name' => 'site', 'type' => 'service_account', 'email' => 'svc@x.iam.gserviceaccount.com', 'connected' => true],
-    ['name' => 'me', 'type' => 'oauth', 'email' => null, 'connected' => false],
+    ['name' => 'site', 'type' => 'service_account', 'email' => 'svc@x.iam.gserviceaccount.com', 'has_credential' => true, 'connected' => true],
+    ['name' => 'me', 'type' => 'oauth', 'email' => null, 'has_credential' => true, 'connected' => false],
+    ['name' => 'you', 'type' => 'oauth', 'email' => 'you@gmail.com', 'has_credential' => true, 'connected' => true],
+    ['name' => 'bare', 'type' => 'service_account', 'email' => null, 'has_credential' => false, 'connected' => false],
 ]);
-check($opts === ['site' => 'site (Service account, svc@x.iam.gserviceaccount.com)', 'me' => 'me (OAuth, not connected)'], 'options(): name => "name (type, email)"');
+check($opts === ['site' => 'site (Service account)', 'me' => 'me (OAuth, not connected)', 'you' => 'you (OAuth, connected)', 'bare' => 'bare (Service account, no key yet)'], 'options(): name => "name (type, state)"');
+check(!str_contains(implode(' ', $opts), '@'), 'options() never carries an email: page editors can fetch them via /data/resolve');
 check(Setup::accountOptions() === [], 'accountOptions() falls back to [] without Grav');
 
 $bodyError = static function (mixed $b): ?string {

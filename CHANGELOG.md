@@ -1,3 +1,9 @@
+# v0.1.5
+## 09/29/2026
+
+1. [](#bugfix)
+    * The **Google Drive account** dropdown on the backup and gallery settings was empty in Admin2: the API only resolves allowlisted `data-options@` providers, so `Setup::accountOptions` is now registered with `Blueprint::addAllowedDynamicCallable`. Its labels no longer include account emails, because page editors can call that endpoint too.
+
 # v0.1.4
 ## 09/29/2026
 

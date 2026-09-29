@@ -423,15 +423,22 @@ final class Setup
 
     /**
      * @internal
-     * @param array<int, array{name: string, type: string, email: ?string, connected: bool}> $statuses
+     * @param array<int, array{name: string, type: string, email: ?string, connected: bool, has_credential?: bool}> $statuses
      * @return array<string, string>
      */
     public static function options(array $statuses): array
     {
         $out = [];
+        // No emails: Admin2 fetches these through /data/resolve, which page editors
+        // (api.pages.read) can call too. The Accounts tab shows who each one is.
         foreach ($statuses as $s) {
-            $who = $s['email'] ?? null;
-            $out[$s['name']] = sprintf('%s (%s, %s)', $s['name'], self::TYPE_LABEL[$s['type']] ?? $s['type'], $who !== null && $who !== '' ? $who : ($s['type'] === 'oauth' ? 'not connected' : 'no key yet'));
+            $state = match (true) {
+                $s['type'] === 'oauth' => !empty($s['connected']) ? 'connected' : 'not connected',
+                empty($s['has_credential']) => 'no key yet',
+                default => '',
+            };
+            $type = self::TYPE_LABEL[$s['type']] ?? $s['type'];
+            $out[$s['name']] = sprintf('%s (%s)', $s['name'], $state === '' ? $type : "{$type}, {$state}");
         }
 
         return $out;
