@@ -44,6 +44,50 @@ behaviour; the decisions in §1 are settled.
   admin login (Admin2 uses an in-memory bearer token), so the state is the only
   thing it trusts. Failures get a generic 400; the reason goes to the log.
 - PKCE (S256) on every Connect; `postMessage` only to the site's own origin.
+- **The endpoints are a trust boundary too**: `Setup::accountBody()` checks the
+  body's shape and caps `json` at 64 KB before `saveCredential()` sees it;
+  route names are validated before any file path is built.
+
+## Admin2 contract (api 1.0.41, admin2 2.1.24; what bites when maintaining)
+
+- **Routes:** `onApiRegisterRoutes` is subscribed unconditionally (never behind
+  `isAdmin()`, which is false on API requests) and fires only when the api
+  plugin rebuilds its route cache (keyed on enabled plugins and each
+  `blueprints.yaml` mtime). After changing routes, touch `blueprints.yaml` or
+  `bin/grav clearcache`. Handlers must be `[Api::class, 'method']`, not
+  closures. Everything stays under `/gdrive`: a clashing route breaks the
+  whole API.
+- **Controller:** `classes/Api.php` extends the api plugin's
+  `AbstractApiController`, so it's the only file that needs the api plugin;
+  nothing else may reference api classes. Success is `ApiResponse::create()`
+  (`{data}`); `DriveException` becomes problem+json with `code` + `anchor`
+  (built by hand, since `ErrorResponse` has no extra fields). PHPStan scans
+  `.gravtest/grav-admin/user/plugins/api/classes` (CI clones api 1.0.41 there).
+- **Permission:** `api.gdrive.manage`. "Super" means `api.super`, not
+  `admin.super`. Core doesn't load plugin `permissions.yaml`; the
+  `PermissionsRegisterEvent` handler does. Demo accounts are blocked from every
+  route (the permission doesn't end in `.read`).
+- **Config writes:** the endpoints write `accounts` to base
+  `user/config/plugins/gdrive.yaml` with `YamlFile`. Admin2's settings-form
+  save posts the whole config it loaded, so `onAdminSave` resets `accounts` to
+  the on-disk value; otherwise a stale page revives removed accounts.
+- **Blueprint:** `data-content@: ['\Class::method', 'arg']` works (file-loaded
+  blueprints are trusted). Admin2 **hides a display field** whose content is
+  empty or contains `<script` or `<div id=`; `Setup::safe()` guards that.
+  Blueprint keys outside the serializer's whitelist never reach a custom
+  field, so the component gets nothing from its blueprint entry.
+- **Tabs follow the URL hash:** `#<tab key>` (lowercase, `--` separates
+  levels). `Setup::render()` rewrites `oauth.md` → `#oauth` and
+  `troubleshooting.md#x` → `#troubleshooting--x`; the component switches tabs
+  the same way, then scrolls to `<a id="x">`. Renaming a tab key or an anchor
+  breaks those links (smoke checks the anchors).
+- **Custom field** (`admin-next/fields/gdrive-accounts.js`): evaluated as an
+  ES module from a blob, so no imports; tag from `window.__GRAV_FIELD_TAG`.
+  Read `window.__GRAV_API_TOKEN` at call time (it's refreshed), send it as
+  `X-API-Token` plus the environment headers. It must never dispatch `change`
+  (display only); the blueprint also sets `validate: {ignore: true}`. Don't
+  name the field `accounts`: `validate.ignore` would strip that config key on
+  every form save.
 
 ## Tooling
 
@@ -52,6 +96,7 @@ No local PHP. Run it via Docker; from Git Bash on Windows:
 ```
 MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W):/app" php:8.3-cli php /app/tests/smoke.php
 MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W):/app" -w /app php:8.3-cli php .gravtest/phpstan.phar analyse --memory-limit=1G
+MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W):/app" -w /app node:22 node --check admin-next/fields/gdrive-accounts.js
 ```
 
 Without `MSYS_NO_PATHCONV=1` MSYS rewrites the `-v` colon, docker mounts

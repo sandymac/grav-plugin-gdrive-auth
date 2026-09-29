@@ -9,4 +9,8 @@
     * Thin Drive v3 client (`request`, `paginate`, `children`, `findByAppProperty`, `ensureFolder`, `download`, resumable single-PUT `upload`, `trash`, `about`) with Shared Drive support on every call, a 401 → refresh-once retry, and backoff on 429/5xx.
     * `DriveException` carries Google's error `reason` and a Troubleshooting anchor.
     * `onGdriveScopes` event for dependent plugins to declare the scopes they need.
-    * `tests/smoke.php`: JWT, PKCE, state single-use and expiry, scope enforcement, retry and 401 logic, upload request shape, error parsing, account-name and credential validation, version drift.
+    * Admin2 settings page (Plugins → Google Drive) with tabs: **Start here** (which account type to use, a per-account checklist, and "who uses what"), **Accounts** (the `gdrive-accounts` field: add by upload or paste, Test, Connect/Reconnect in a popup, Remove), and full **Service account**, **OAuth** and **Troubleshooting** guides.
+    * Guides live once, in `docs/setup/*.md`, and render in Admin2 with this site's redirect URI, service-account emails and needed scopes filled in. Troubleshooting has a stable anchor for every error code, and Test results link straight to it.
+    * Admin2 endpoints under `/api/v1/gdrive/accounts` (list, add, remove, test, connect), all behind the new `api.gdrive.manage` permission. Errors are problem+json with the reason `code` and Troubleshooting `anchor`.
+    * `Setup` blueprint helpers for dependent plugins: `accountOptions()` for an account picker, `consumerNotice($plugin)` for a "Needs … · Set up Google Drive access →" line.
+    * `tests/smoke.php`: JWT, PKCE, state single-use and expiry, scope enforcement, retry and 401 logic, upload request shape, error parsing, account-name and credential validation, the settings page's rows, guide rendering, request-body validation, a Troubleshooting anchor for every reason code, version drift.

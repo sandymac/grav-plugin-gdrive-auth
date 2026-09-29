@@ -31,3 +31,69 @@ form:
         0: PLUGIN_ADMIN.DISABLED
       validate:
         type: bool
+
+    # Tab keys double as Admin2's URL hash (#oauth, #troubleshooting); Setup::render
+    # rewrites links between the guides to them, so keep the two in step.
+    tabs:
+      type: tabs
+      fields:
+        start:
+          type: tab
+          title: Start here
+          fields:
+            start_guide:
+              type: display
+              style: vertical
+              markdown: true
+              data-content@: ['\Grav\Plugin\Gdrive\Setup::guide', 'start-here']
+            start_checklist:
+              type: display
+              style: vertical
+              markdown: true
+              data-content@: '\Grav\Plugin\Gdrive\Setup::checklist'
+            start_who:
+              type: display
+              style: vertical
+              markdown: true
+              data-content@: '\Grav\Plugin\Gdrive\Setup::whoUsesWhat'
+
+        accounts_tab:
+          type: tab
+          title: Accounts
+          fields:
+            # Display only: the component talks to /api/v1/gdrive and never sends a
+            # form value. validate.ignore makes the config save drop the key anyway.
+            account_manager:
+              type: gdrive-accounts
+              validate:
+                ignore: true
+
+        service_account:
+          type: tab
+          title: Service account guide
+          fields:
+            service_account_guide:
+              type: display
+              style: vertical
+              markdown: true
+              data-content@: ['\Grav\Plugin\Gdrive\Setup::guide', 'service-account']
+
+        oauth:
+          type: tab
+          title: OAuth guide
+          fields:
+            oauth_guide:
+              type: display
+              style: vertical
+              markdown: true
+              data-content@: ['\Grav\Plugin\Gdrive\Setup::guide', 'oauth']
+
+        troubleshooting:
+          type: tab
+          title: Troubleshooting
+          fields:
+            troubleshooting_guide:
+              type: display
+              style: vertical
+              markdown: true
+              data-content@: ['\Grav\Plugin\Gdrive\Setup::guide', 'troubleshooting']

@@ -14,7 +14,10 @@ parameters:
         - gdrive.php
         - classes
     # Symbol resolution comes from a real Grav install at .gravtest/grav-admin
-    # (CI recreates the same layout — see .github/workflows/ci.yml). This plugin
-    # depends on nothing but Grav core, so core's autoloader is the whole list.
+    # (CI recreates the same layout, see .github/workflows/ci.yml). Only
+    # classes/Api.php needs more than core: the api plugin's controller base,
+    # responses and exceptions, which aren't in core's autoloader.
     bootstrapFiles:
         - .gravtest/grav-admin/vendor/autoload.php
+    scanDirectories:
+        - .gravtest/grav-admin/user/plugins/api/classes

@@ -23,6 +23,7 @@ use Grav\Plugin\Gdrive\DriveException;
 use Grav\Plugin\Gdrive\Http;
 use Grav\Plugin\Gdrive\OAuthUser;
 use Grav\Plugin\Gdrive\ServiceAccount;
+use Grav\Plugin\Gdrive\Setup;
 
 function check(bool $ok, string $what): void
 {
@@ -259,6 +260,78 @@ check($bad['ok'] === false && $bad['reason'] === 'invalid_grant' && $bad['anchor
 $accounts->remove('personal');
 check(!is_file($tmp . '/personal.token.json') && !is_file($tmp . '/personal.client.json') && !isset($accounts->config()['accounts']['personal']), 'remove() deletes the files and the config entry');
 check(count(array_filter($googleCalls, static fn (array $c): bool => str_contains($c[0], '/revoke') && $c[1]['token'] === 'R1')) === 1, 'remove() revokes the refresh token first');
+
+// --- Setup: the settings page's rows, renderers and body validation (no Grav booted here).
+$decl = [
+    ['plugin' => 'gdrive-images', 'account' => 'site', 'scopes' => [Drive::SCOPE_READONLY]],
+    ['plugin' => 'gdrive-backup', 'account' => 'site', 'scopes' => [Drive::SCOPE_FILE]],
+    ['plugin' => 'gdrive-backup', 'account' => 'nope', 'scopes' => [Drive::SCOPE_FILE]],
+];
+check(Setup::declaredScopes($decl, 'site') === [Drive::SCOPE_READONLY, Drive::SCOPE_FILE], 'declaredScopes() unions one account\'s declarations');
+$rows = Setup::rows($accounts, $decl, $tmp);
+check(count($rows) === 1 && $rows[0]['name'] === 'site' && count($rows[0]['declared']) === 2 && $rows[0]['missing'] === [] && $rows[0]['test'] === null, 'rows(): status plus declarations, no test yet');
+Accounts::writeSecret($tmp . '/site.test.json', (string) json_encode(['ok' => false, 'reason' => 'notFound', 'anchor' => 'not-found', 'message' => 'x', 'at' => 'now']));
+$rows = Setup::rows($accounts, $decl, $tmp);
+check(($rows[0]['test']['reason'] ?? '') === 'notFound', 'rows() includes the last test result');
+check(!str_contains((string) json_encode($rows), 'PRIVATE KEY') && !str_contains((string) json_encode($rows), 'private_key'), 'rows() carry no secret');
+
+$opts = Setup::options([
+    ['name' => 'site', 'type' => 'service_account', 'email' => 'svc@x.iam.gserviceaccount.com', 'connected' => true],
+    ['name' => 'me', 'type' => 'oauth', 'email' => null, 'connected' => false],
+]);
+check($opts === ['site' => 'site (Service account, svc@x.iam.gserviceaccount.com)', 'me' => 'me (OAuth, not connected)'], 'options(): name => "name (type, email)"');
+check(Setup::accountOptions() === [], 'accountOptions() falls back to [] without Grav');
+
+$bodyError = static function (mixed $b): ?string {
+    try {
+        Setup::accountBody($b);
+    } catch (\InvalidArgumentException $e) {
+        return $e->getMessage();
+    }
+
+    return null;
+};
+check(Setup::accountBody(['name' => 'site', 'type' => 'oauth', 'json' => '{}', 'extra' => 1]) === ['name' => 'site', 'type' => 'oauth', 'json' => '{}'], 'accountBody() keeps only name, type, json');
+foreach ([
+    'not an object' => 'x',
+    'a path as the name' => ['name' => '../etc', 'type' => 'oauth', 'json' => '{}'],
+    'an uppercase name' => ['name' => 'Site', 'type' => 'oauth', 'json' => '{}'],
+    'an unknown type' => ['name' => 'site', 'type' => 'jwt', 'json' => '{}'],
+    'json as an object' => ['name' => 'site', 'type' => 'oauth', 'json' => ['web' => []]],
+    'empty json' => ['name' => 'site', 'type' => 'oauth', 'json' => '  '],
+    'oversized json' => ['name' => 'site', 'type' => 'oauth', 'json' => str_repeat(' ', Setup::MAX_JSON) . '{}'],
+] as $what => $b) {
+    check($bodyError($b) !== null, "accountBody() refuses {$what}");
+}
+
+$md = Setup::render('[a](oauth.md) [b](troubleshooting.md#invalid-grant) [c](https://x/oauth.md) `{{redirect_uri}}` {{x}} <script>alert(1)</script> <div id="x"> < SCRIPT', ['redirect_uri' => 'https://ex.com/cb']);
+check(str_contains($md, '](#oauth)') && str_contains($md, '](#troubleshooting--invalid-grant)') && str_contains($md, '(https://x/oauth.md)'), 'render() points guide links at the settings tabs and leaves others alone');
+check(str_contains($md, '`https://ex.com/cb`') && str_contains($md, '{{x}}'), 'render() fills known placeholders only');
+check(!preg_match('/<\s*script|<div id=/i', $md), 'render() never emits <script or <div id=');
+foreach (Setup::GUIDES as $g) {
+    $out = Setup::guide($g);
+    check(strlen($out) > 500 && !str_contains($out, '{{') && !preg_match('/<\s*script|<div id=/i', $out), "guide({$g}) renders without Grav: fallbacks filled, nothing Admin2 would hide");
+}
+check(str_contains(Setup::guide('oauth'), 'https://YOUR-SITE/gdrive-oauth/callback') && str_contains(Setup::guide('service-account'), 'upload a key first'), 'unknown values get friendly fallbacks');
+check(Setup::guide('../README') === '', 'guide() only reads its own four files');
+check(Setup::checklist() !== '' && Setup::whoUsesWhat() !== '', 'checklist() and whoUsesWhat() survive Grav not being booted');
+check(str_contains(Setup::consumerNotice('gdrive-images'), 'Set up Google Drive access'), 'consumerNotice() always points at the setup page');
+
+// --- Every reason the library raises, and every Google reason the guide promises, has its Troubleshooting anchor.
+$trouble = (string) file_get_contents(__DIR__ . '/../docs/setup/troubleshooting.md');
+$src = implode("\n", array_map('file_get_contents', [...(glob(__DIR__ . '/../classes/*.php') ?: []), __DIR__ . '/../gdrive.php']));
+preg_match_all("/new DriveException\\([^;]*?,\\s*'([A-Za-z_]+)'/s", $src, $m);
+$ours = array_values(array_unique($m[1]));
+check(count($ours) >= 9, 'found the library\'s own reason codes: ' . implode(', ', $ours));
+$google = ['storageQuotaExceeded', 'notFound', 'accessNotConfigured', 'redirect_uri_mismatch', 'invalid_grant', 'rateLimitExceeded', 'userRateLimitExceeded', 'insufficientPermissions', 'insufficientFilePermissions', 'invalid_client', 'unauthorized_client', 'access_denied', 'admin_policy_enforced', 'org_internal', 'PERMISSION_DENIED', 'UNAUTHENTICATED', 'forbidden', 'authError', 'backendError', 'internalError'];
+foreach ([...$ours, ...$google] as $reason) {
+    $anchor = (new DriveException('', $reason))->anchor();
+    check(str_contains($trouble, "<a id=\"{$anchor}\"></a>"), "troubleshooting.md has an anchor for {$reason} (#{$anchor})");
+}
+preg_match_all('/\]\(troubleshooting\.md#([a-z0-9-]+)\)|\]\(#(?!troubleshooting--)([a-z0-9-]+)\)|#troubleshooting--([a-z0-9-]+)/', implode("\n", array_map('file_get_contents', [...(glob(__DIR__ . '/../docs/setup/*.md') ?: []), __DIR__ . '/../classes/Setup.php', __DIR__ . '/../admin-next/fields/gdrive-accounts.js'])), $links);
+foreach (array_unique(array_filter([...$links[1], ...$links[2], ...$links[3]])) as $anchor) {
+    check(str_contains($trouble, "<a id=\"{$anchor}\"></a>"), "link #{$anchor} has its Troubleshooting anchor");
+}
 
 foreach (array_merge(glob($tmp . '/oauth-state/*') ?: [], glob($tmp . '/*') ?: []) as $f) {
     is_dir($f) ? @rmdir($f) : @unlink($f);

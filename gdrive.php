@@ -4,12 +4,19 @@ declare(strict_types=1);
 
 namespace Grav\Plugin;
 
+use Grav\Common\Data\Data;
 use Grav\Common\Plugin;
+use Grav\Events\PermissionsRegisterEvent;
+use Grav\Framework\Acl\PermissionsReader;
+use Grav\Plugin\Gdrive\Api;
 use Grav\Plugin\Gdrive\DriveException;
 use Grav\Plugin\Gdrive\Gdrive;
+use RocketTheme\Toolbox\Event\Event;
+use RocketTheme\Toolbox\File\AbstractFile;
 
 /**
- * Shared Google Drive library. Its only route is the public OAuth callback;
+ * Shared Google Drive library. Its only front-end route is the public OAuth
+ * callback; the settings page talks to the Admin2 endpoints in Gdrive\Api;
  * everything else is classes other plugins call through Gdrive::drive().
  */
 class GdrivePlugin extends Plugin
@@ -23,7 +30,44 @@ class GdrivePlugin extends Plugin
                 ['autoload', 100000],
                 ['onPluginsInitialized', 1000],
             ],
+            // Unconditional: on API requests isAdmin() is still false here, and
+            // the api plugin fires this only when it rebuilds its route cache.
+            'onApiRegisterRoutes' => ['onApiRegisterRoutes', 0],
+            PermissionsRegisterEvent::class => ['onRegisterPermissions', 1000],
+            'onAdminSave' => ['onAdminSave', 0],
         ];
+    }
+
+    /** Handlers are [class, method] so the api plugin can cache the route table. */
+    public function onApiRegisterRoutes(Event $event): void
+    {
+        $event['routes']->group('/gdrive', static function ($r): void {
+            $r->get('/accounts', [Api::class, 'list']);
+            $r->post('/accounts', [Api::class, 'save']);
+            $r->delete('/accounts/{name}', [Api::class, 'remove']);
+            $r->post('/accounts/{name}/test', [Api::class, 'test']);
+            $r->post('/accounts/{name}/connect', [Api::class, 'connect']);
+        });
+    }
+
+    /** Core doesn't read plugin permissions.yaml by itself; this puts api.gdrive.manage in the Users/Groups editor. */
+    public function onRegisterPermissions(PermissionsRegisterEvent $event): void
+    {
+        $event->permissions->addActions(PermissionsReader::fromYaml("plugin://{$this->name}/permissions.yaml"));
+    }
+
+    /**
+     * Admin2 posts the whole config it loaded when the settings form is saved,
+     * accounts included. The endpoints own that key, so a stale copy from a
+     * page opened before an account was added or removed must not win.
+     */
+    public function onAdminSave(Event $event): void
+    {
+        $obj = $event['object'] ?? null;
+        $file = $obj instanceof Data ? $obj->file() : null;
+        if ($file instanceof AbstractFile && str_ends_with(str_replace('\\', '/', (string) $file->filename()), '/plugins/gdrive.yaml')) {
+            $obj->set('accounts', (array) $this->config->get('plugins.gdrive.accounts', []));
+        }
     }
 
     public function autoload(): void
