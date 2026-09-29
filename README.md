@@ -172,13 +172,16 @@ Every HTTP call goes through one callable:
 ```php
 callable(string $method, string $url, array $opts): array{0: int, 1: string, 2: array<string, string>}
 // returns [status, body, lowercase response headers]
-// $opts: headers (string[]), body (string), infile (resource) + infile_size (int), sink (resource)
+// $opts: headers (string[]), body (string), infile (resource) + infile_size (int), sink (resource),
+//        timeout (int seconds; Http::curl only ever shortens its defaults with it)
 ```
 
 `Gdrive::setHttp($fake)` makes every client built afterwards use `$fake`
 instead of curl (`null` restores curl), so a dependent plugin's smoke test can
 stub Drive. `Drive`, `ServiceAccount`, `OAuthUser` and `Accounts` also take it
-as a constructor argument.
+as a constructor argument, and `Gdrive::accounts()->withHttp($http)` (0.1.11+)
+returns a copy of the registry whose credentials (token refreshes included)
+use `$http`, e.g. a short-timeout, no-retry transport for a settings-page check.
 
 ## Development
 

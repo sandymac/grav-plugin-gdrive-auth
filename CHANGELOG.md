@@ -1,3 +1,10 @@
+# v0.1.11
+## 09/29/2026
+
+1. [](#improved)
+    * Http::curl takes an optional per-request timeout.
+    * `Accounts::withHttp($http)`: the registry over another transport, so a short-timeout check's token refreshes use it too.
+
 # v0.1.10
 ## 09/29/2026
 

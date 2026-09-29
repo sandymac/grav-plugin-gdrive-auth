@@ -123,6 +123,10 @@ $sink = fopen('php://memory', 'w+');
 check(Http::withRetry($script([[503, '', []], [200, '', []]]), 4, $sleep)('GET', 'https://x', ['sink' => $sink])[0] === 503 && $calls === 1, 'withRetry never replays a streamed request');
 check($slept[0] >= 1 && $slept[0] <= 2, 'first backoff is 1s plus jitter');
 
+// --- Http::curl: a per-request timeout caps connect and transfer (a blackholed address, or no network: fails fast either way).
+$t0 = microtime(true);
+check(reason(static fn () => Http::curl('GET', 'http://10.255.255.1/', ['timeout' => 1])) === 'transport' && microtime(true) - $t0 < 3, 'curl with timeout 1 gives up within a few seconds');
+
 // --- Drive: 401 → forget → one retry; upload is a resumable POST then one streamed PUT.
 $fakeCreds = new class () implements Credentials {
     public int $forgot = 0;
@@ -225,6 +229,13 @@ $st = $accounts->status('site');
 check($st['has_credential'] && $st['connected'] && $st['email'] === $sa['client_email'] && !str_contains((string) json_encode($st), 'PRIVATE KEY'), 'SA status shows the email and no secret');
 $st = $accounts->status('personal');
 check($st['has_credential'] && !$st['connected'] && $st['scopes'] === [], 'OAuth status before Connect');
+$other = 0;
+$viaOther = $accounts->withHttp(static function () use (&$other): array {
+    $other++;
+
+    return [200, '{"access_token":"sa-other","expires_in":3599}', []];
+});
+check($viaOther->credentials('site')->token([Drive::SCOPE_READONLY]) === 'sa-other' && $other === 1 && $viaOther !== $accounts, 'withHttp(): a copy whose credentials (token refresh) use the other transport');
 
 // --- OAuth: not connected → Connect via single-use state → scope enforcement → refresh.
 check(reason(static fn () => $accounts->credentials('personal')->token([Drive::SCOPE_FILE])) === 'not_connected', 'token() before Connect is not_connected');

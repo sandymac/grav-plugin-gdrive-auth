@@ -10,7 +10,8 @@ namespace Grav\Plugin\Gdrive;
  * returning [status, body, lowercase response headers], so tests (ours and
  * dependent plugins') swap in a fake. $opts: headers (string[]), body
  * (string), infile (resource) + infile_size (int) for a streamed PUT, sink
- * (resource) to stream the response body to instead of returning it.
+ * (resource) to stream the response body to instead of returning it, timeout
+ * (seconds) to cap this request below the defaults.
  */
 final class Http
 {
@@ -18,8 +19,9 @@ final class Http
 
     /**
      * The real transport. A curl failure (DNS, reset, timeout) throws DriveException reason `transport`.
+     * `timeout` only ever shortens the defaults (a settings page can't wait minutes for Google).
      *
-     * @param array{headers?: string[], body?: string, infile?: resource, infile_size?: int, sink?: resource} $opts
+     * @param array{headers?: string[], body?: string, infile?: resource, infile_size?: int, sink?: resource, timeout?: int} $opts
      * @return array{int, string, array<string, string>}
      */
     public static function curl(string $method, string $url, array $opts = []): array
@@ -29,13 +31,14 @@ final class Http
             throw new DriveException('gdrive: curl_init failed', 'transport');
         }
         $headers = [];
+        $cap = isset($opts['timeout']) ? max(1, (int) $opts['timeout']) : PHP_INT_MAX;
         curl_setopt_array($ch, [
             CURLOPT_CUSTOMREQUEST => $method,
             CURLOPT_HTTPHEADER => $opts['headers'] ?? [],
             CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_CONNECTTIMEOUT => min($cap, 15),
             // Uploads can be large backups; anything else that runs this long is stuck.
-            CURLOPT_TIMEOUT => isset($opts['infile']) ? 3600 : 300,
+            CURLOPT_TIMEOUT => min($cap, isset($opts['infile']) ? 3600 : 300),
             // ...and a transfer that stalls for a minute is dead whatever its size.
             CURLOPT_LOW_SPEED_LIMIT => 1,
             CURLOPT_LOW_SPEED_TIME => 60,

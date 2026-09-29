@@ -38,6 +38,22 @@ final class Accounts
     }
 
     /**
+     * This registry over another transport, e.g. a short-timeout one for a
+     * settings-page check, so its token refreshes use it too. Credentials are
+     * rebuilt; tokens are still shared through the cache.
+     *
+     * @param callable(string, string, array): array{int, string, array<string, string>} $http
+     */
+    public function withHttp(callable $http): self
+    {
+        $copy = clone $this;
+        $copy->http = $http;
+        $copy->creds = [];
+
+        return $copy;
+    }
+
+    /**
      * $config with the account added or retyped. Pure: the caller persists it.
      */
     public static function configWith(array $config, string $name, string $type): array
