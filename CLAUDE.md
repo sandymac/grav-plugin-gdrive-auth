@@ -81,7 +81,19 @@ behaviour; the decisions in §1 are settled.
   `troubleshooting.md#x` → `#troubleshooting--x`; the component switches tabs
   the same way, then scrolls to `<a id="x">`. Renaming a tab key or an anchor
   breaks those links (smoke checks the anchors).
-- **Custom field** (`admin-next/fields/gdrive-accounts.js`): evaluated as an
+- **Guide markers:** `docs/setup/*.md` mark path-specific parts with
+  `<!-- only: tag[,tag…] -->` … `<!-- /only -->`, each on its own line
+  (indent inside list items). A block is kept if any entry is active; an entry
+  is `tag`, `not-tag` (active when tag isn't) or `a+b` (all). No nesting. Tags:
+  `gmail`, `workspace`, `oauth`, `sa`, `shared-drive`, `admin`, `not-admin`,
+  `project`, and `backup`/`gallery` (from declared scopes; both if none).
+  `guide()` strips the markers (full guides keep everything); the Guided setup
+  (`Setup::guided()`, `GET /gdrive/guide`) filters with them. Keep blank lines
+  around blocks so the unfiltered text still reads.
+- **Display-field tables:** Admin2's display field has Tailwind preflight and
+  no table CSS, so `guide()`/`whoUsesWhat()` turn pipe tables into HTML with
+  inline cell padding (`Setup::tables()`; DOMPurify keeps `style`).
+- **Custom fields** (`admin-next/fields/gdrive-*.js`): evaluated as an
   ES module from a blob, so no imports; tag from `window.__GRAV_FIELD_TAG`.
   Read `window.__GRAV_API_TOKEN` at call time (it's refreshed), send it as
   `X-API-Token` plus the environment headers. It must never dispatch `change`

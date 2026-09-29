@@ -209,19 +209,19 @@ class GdriveAccounts extends HTMLElement {
             <div class="list"></div>
             <div class="add" role="group" aria-labelledby="add-h">
                 <h3 id="add-h">Add account</h3>
-                <p class="hint">Follow the <a href="#service_account">service account guide</a> or the
-                    <a href="#oauth">OAuth guide</a> first; each ends with the JSON file to upload here.
+                <p class="hint">Follow the <a href="#guided">Guided setup</a>, or the full <a href="#oauth">OAuth guide</a> or
+                    <a href="#service_account">service account guide</a>, first; each ends with the JSON file to upload here.
                     Uploading under an existing name replaces its credential.</p>
                 <div class="grid">
                     <label for="add-name">Name
                         <input id="add-name" name="name" type="text" required maxlength="32" autocomplete="off"
-                            spellcheck="false" placeholder="site" aria-describedby="add-name-hint">
+                            spellcheck="false" placeholder="personal" aria-describedby="add-name-hint">
                         <span class="hint" id="add-name-hint">Lowercase letters, digits, - and _. Plugins refer to the account by it.</span>
                     </label>
                     <label for="add-type">Type
                         <select id="add-type" name="type">
-                            <option value="service_account">Service account (key JSON)</option>
                             <option value="oauth">OAuth (Web application client JSON)</option>
+                            <option value="service_account">Service account (key JSON)</option>
                         </select>
                     </label>
                 </div>

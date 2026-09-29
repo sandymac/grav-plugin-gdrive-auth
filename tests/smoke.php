@@ -314,6 +314,85 @@ foreach (Setup::GUIDES as $g) {
 }
 check(str_contains(Setup::guide('oauth'), 'https://YOUR-SITE/gdrive-oauth/callback') && str_contains(Setup::guide('service-account'), 'upload a key first'), 'unknown values get friendly fallbacks');
 check(Setup::guide('../README') === '', 'guide() only reads its own four files');
+check(!preg_match('/<\s*script|<div id=/i', Setup::guide('start-here')) && str_contains(Setup::guide('start-here'), 'Most people: use OAuth'), 'start-here renders, recommends OAuth, and has nothing Admin2 would hide');
+
+// --- Guided setup: conditional markers, the full guides unfiltered, tables, deep links, the query whitelist.
+$md = "a\n<!-- only: gmail -->\nG\n<!-- /only -->\n<!-- only: workspace+not-admin -->\nW\n<!-- /only -->\n   <!-- only: not-admin, sa -->\n   N\n   <!-- /only -->\nz\n";
+check(Setup::filterGuide($md, ['gmail']) === "a\nG\n   N\nz\n", 'filterGuide(): a tag keeps its block, not-admin is active when admin is not, workspace+not-admin needs both');
+check(Setup::filterGuide($md, ['workspace', 'not-admin']) === "a\nW\n   N\nz\n", 'filterGuide(): a+b keeps the block when every tag is active');
+check(Setup::filterGuide($md, ['workspace', 'admin']) === "a\nz\n", 'filterGuide(): negation drops not-admin for an admin');
+check(Setup::filterGuide($md, ['workspace', 'admin', 'sa']) === "a\n   N\nz\n", 'filterGuide(): any comma-separated entry keeps the block');
+check(Setup::filterGuide("x\r\n<!-- only: gmail -->\r\nG\r\n<!-- /only -->\r\ny", []) === "x\r\ny", 'filterGuide() handles CRLF checkouts');
+foreach (['oauth', 'service-account', 'start-here'] as $g) {
+    check(!str_contains(Setup::guide($g), '<!--'), "guide({$g}) drops the markers");
+}
+check(str_contains(Setup::guide('oauth'), 'Publish app') && str_contains(Setup::guide('oauth'), '**Internal**') && str_contains(Setup::guide('oauth'), 'the 7-day trap'), 'the full OAuth guide keeps both the External and the Internal path');
+check(str_contains(Setup::guide('service-account'), 'ask your Workspace administrator') && str_contains(Setup::guide('service-account'), 'how an organisation administrator allows keys'), 'the full service-account guide keeps both admin and not-admin text');
+
+$t = Setup::tables("x\n\n| a | b |\n|---|:--|\n| **c** | d |\n\ny\n", static fn (string $c): string => strtoupper($c));
+check(str_contains($t, '<table') && str_contains($t, '<th style="padding:6px 14px') && str_contains($t, '<td style="padding:6px 14px;vertical-align:top;text-align:left;border-bottom:1px solid rgba(127,127,127,.3)">**C**</td>') && !str_contains($t, '|') && str_starts_with($t, "x\n\n<table") && str_ends_with($t, "</table>\n\ny\n"), 'tables(): pipe table → one-line HTML table with padded cells');
+$t = Setup::tables((string) file_get_contents(__DIR__ . '/../docs/setup/start-here.md'), static fn (string $c): string => htmlspecialchars($c));
+check(substr_count($t, '<table') === 1 && strpos($t, 'OAuth (your Google account)') < strpos($t, '>Service account<'), 'start-here: one comparison table, OAuth column first');
+
+check(Setup::withProject('[a](https://console.cloud.google.com/) [b](https://console.cloud.google.com/apis/library/drive.googleapis.com)', 'my-site-123') === '[a](https://console.cloud.google.com/?project=my-site-123) [b](https://console.cloud.google.com/apis/library/drive.googleapis.com?project=my-site-123)', 'withProject() adds ?project= to console links');
+check(Setup::withProject('(https://console.cloud.google.com/x?a=1) (https://console.cloud.google.com/y?) (https://console.cloud.google.com/z#f) (https://console.cloud.google.com/w?project=keep)', 'my-site-123') === '(https://console.cloud.google.com/x?a=1&project=my-site-123) (https://console.cloud.google.com/y?project=my-site-123) (https://console.cloud.google.com/z?project=my-site-123#f) (https://console.cloud.google.com/w?project=keep)', 'withProject() merges &, keeps the fragment and an existing project=');
+$other = '[d](https://drive.google.com/) [m](https://myaccount.google.com/connections) https://console.cloud.google.com.evil.example/x';
+check(Setup::withProject($other, 'my-site-123') === $other && Setup::withProject('https://console.cloud.google.com/', 'Bad_ID') === 'https://console.cloud.google.com/', 'withProject() leaves other links alone and ignores a bad ID');
+
+$profileError = static function (array $q): ?string {
+    try {
+        Setup::guideProfile($q);
+    } catch (\InvalidArgumentException $e) {
+        return $e->getMessage();
+    }
+
+    return null;
+};
+foreach ([
+    'no kind' => [],
+    'an unknown kind' => ['kind' => 'Gmail'],
+    'kind as an array' => ['kind' => ['gmail']],
+    'an unknown method' => ['kind' => 'gmail', 'method' => 'jwt'],
+    'an unknown shared_drive' => ['kind' => 'workspace', 'shared_drive' => 'maybe'],
+    'an unknown admin' => ['kind' => 'workspace', 'admin' => '1'],
+    'a project with uppercase' => ['kind' => 'gmail', 'project' => 'My-Project'],
+    'a project with markup' => ['kind' => 'gmail', 'project' => '<script>x</script>'],
+    'a too-short project' => ['kind' => 'gmail', 'project' => 'abc'],
+    'a project ending in a hyphen' => ['kind' => 'gmail', 'project' => 'my-project-'],
+] as $what => $q) {
+    $err = $profileError($q);
+    check($err !== null && !str_contains($err, '<') && !str_contains($err, 'My-Project'), "guideProfile() refuses {$what} without echoing it");
+}
+check(Setup::guideProfile(['kind' => 'workspace', 'shared_drive' => 'yes', 'utm' => 'x']) === ['kind' => 'workspace', 'method' => 'oauth', 'shared_drive' => 'yes', 'admin' => 'no', 'project' => ''], 'guideProfile(): OAuth by default even with a Shared Drive, admin defaults to no, unknown keys ignored');
+check(Setup::guideProfile(['kind' => 'gmail', 'method' => 'sa', 'shared_drive' => 'yes', 'admin' => 'yes', 'project' => 'my-site-123']) === ['kind' => 'gmail', 'method' => 'sa', 'shared_drive' => '', 'admin' => '', 'project' => 'my-site-123'], 'guideProfile(): Workspace answers are dropped for a personal account');
+
+$prof = Setup::guideProfile(['kind' => 'workspace', 'method' => 'sa', 'shared_drive' => 'yes', 'admin' => 'yes']);
+check(Setup::guideTags($prof, []) === ['workspace', 'sa', 'shared-drive', 'admin', 'backup', 'gallery'], 'guideTags(): nothing declared → both purposes');
+check(Setup::guideTags(Setup::guideProfile(['kind' => 'gmail']), [$decl[0]]) === ['gmail', 'oauth', 'gallery'], 'guideTags(): drive.readonly → gallery only');
+check(Setup::guideTags(Setup::guideProfile(['kind' => 'workspace', 'project' => 'my-site-123']), [['plugin' => 'x', 'account' => 'a', 'scopes' => [Drive::SCOPE_FULL]]]) === ['workspace', 'oauth', 'not-admin', 'project', 'backup'], 'guideTags(): drive → backup; not-admin and project');
+
+// Without Grav, guided() shows the markdown escaped in <pre>; decode it to read the text.
+$guided = static fn (array $q): string => html_entity_decode(Setup::guided($q), ENT_QUOTES);
+$paths = [
+    'gmail + OAuth' => [['kind' => 'gmail', 'method' => 'oauth'], ['OAuth** account for a personal Google account', 'Publish app', 'the 7-day trap', "Google hasn't verified this app", 'Click **Connect**'], ['Internal', 'On Google Workspace?']],
+    'Workspace + SA + Shared Drive + admin' => [['kind' => 'workspace', 'method' => 'sa', 'shared_drive' => 'yes', 'admin' => 'yes'], ['**service account** for a Google Workspace account', 'writes into a Shared Drive', 'how an organisation administrator allows keys', 'Content manager', 'Viewer', 'key creation is disabled'], ['ask your Workspace administrator', 'With a personal Google account', 'Publish app']],
+    'Workspace + SA, not admin' => [['kind' => 'workspace', 'method' => 'sa', 'shared_drive' => 'no', 'admin' => 'no'], ['ask your Workspace administrator', 'iam.disableServiceAccountKeyCreation', 'can only read folders'], ['how an organisation administrator allows keys']],
+    'Workspace + OAuth' => [['kind' => 'workspace'], ['**Internal** (Google Workspace)', 'An **Internal** app', 'On Google Workspace?'], ['the 7-day trap', 'Publish app', "hasn't verified", 'Test users']],
+];
+foreach ($paths as $what => [$q, $has, $hasNot]) {
+    $g = $guided($q);
+    check(!str_contains($g, '<!--') && !str_contains($g, '{{') && str_contains($g, '### Then') && str_contains($g, '](#accounts_tab)'), "guided({$what}): markers gone, placeholders filled, ends with Then");
+    foreach ($has as $phrase) {
+        check(str_contains($g, $phrase), "guided({$what}) says \"{$phrase}\"");
+    }
+    foreach ($hasNot as $phrase) {
+        check(!str_contains($g, $phrase), "guided({$what}) leaves out \"{$phrase}\"");
+    }
+}
+$g = $guided(['kind' => 'gmail', 'project' => 'my-site-123']);
+check(str_contains($g, 'https://console.cloud.google.com/?project=my-site-123') && str_contains($g, 'auth/audience?project=my-site-123') && str_contains($g, 'already open the project you named') && str_contains($g, '(https://myaccount.google.com/connections)'), 'guided() with a project deep-links every console link, and only those');
+check(!str_contains($guided(['kind' => 'gmail']), 'already open the project'), 'guided() without a project leaves out the project line');
+check(!str_contains(Setup::guided(['kind' => '<b>x</b>']), '<b>'), 'guided() refuses a bad profile without echoing it');
 check(Setup::checklist() !== '' && Setup::whoUsesWhat() !== '', 'checklist() and whoUsesWhat() survive Grav not being booted');
 check(str_contains(Setup::consumerNotice('gdrive-images'), 'Set up Google Drive access'), 'consumerNotice() always points at the setup page');
 
@@ -351,6 +430,8 @@ foreach (glob(__DIR__ . '/../admin-next/fields/*.js') ?: [] as $js) {
     check(stripos($src, '<form') === false, basename($js) . ' has no <form> (Admin2 nests fields in its own form)');
     preg_match_all('/<button\b[^>]*>/', $src, $buttons);
     check(array_filter($buttons[0], static fn (string $b): bool => !str_contains($b, 'type="button"')) === [], basename($js) . ' types every <button> as type="button"');
+    check(preg_match('/new\s+CustomEvent\(\s*[\'"]change/', $src) === 0, basename($js) . ' never dispatches change (display-only fields)');
+    check(str_starts_with(trim((string) preg_replace('~^/\*.*?\*/~s', '', $src)), 'const TAG = window.__GRAV_FIELD_TAG;') && str_ends_with(trim($src), ');') && str_contains($src, 'customElements.define(TAG,'), basename($js) . ' takes its tag from window.__GRAV_FIELD_TAG');
 }
 
 echo "smoke: OK\n";

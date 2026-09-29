@@ -21,7 +21,7 @@ use RocketTheme\Toolbox\File\AbstractFile;
  */
 class GdrivePlugin extends Plugin
 {
-    public const VERSION = '0.1.2';
+    public const VERSION = '0.1.3';
 
     public static function getSubscribedEvents(): array
     {
@@ -47,6 +47,7 @@ class GdrivePlugin extends Plugin
             $r->delete('/accounts/{name}', [Api::class, 'remove']);
             $r->post('/accounts/{name}/test', [Api::class, 'test']);
             $r->post('/accounts/{name}/connect', [Api::class, 'connect']);
+            $r->get('/guide', [Api::class, 'guide']);
         });
     }
 

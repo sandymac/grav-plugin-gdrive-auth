@@ -1,7 +1,8 @@
 ## OAuth guide
 
-An OAuth account lets the site act as **you**, a normal Google account (Gmail
-or Workspace), with the permissions you approve on Google's consent screen.
+An OAuth account lets the site act as **you**, a normal Google account (a
+personal Gmail account, or Workspace), with the permissions you approve on
+Google's consent screen.
 Files it creates are yours and live in your My Drive. This works for anyone,
 with no Shared Drive needed.
 
@@ -9,12 +10,18 @@ You create your own small "app" in Google Cloud for this. Nothing goes through a
 third party: the app is yours, and only your site uses it. It takes about ten
 minutes.
 
+<!-- only: gmail -->
 > **Before you start: the 7-day trap.** A new Google app starts in **Testing**.
 > For an **External** app in Testing, Google makes the connection expire after
 > **7 days**, and the site then fails with
-> [`invalid_grant`](troubleshooting.md#invalid-grant). Step 3 fixes this: either
-> choose **Internal** (Workspace only) or click **Publish app** so the status
-> is **In production**. Don't skip it.
+> [`invalid_grant`](troubleshooting.md#invalid-grant). Step 3 fixes this: click
+> **Publish app** so the status is **In production**. Don't skip it.
+<!-- /only -->
+
+<!-- only: workspace -->
+> **On Google Workspace?** Choose **Internal** in step 3: there's no Testing
+> status, no 7-day expiry and no warning screen.
+<!-- /only -->
 
 ### 1. Create or pick a Google Cloud project
 
@@ -25,6 +32,10 @@ minutes.
    **New project** ([direct link](https://console.cloud.google.com/projectcreate)),
    name it (for example "My website") and click **Create**.
 3. Make sure the project is selected in the picker before you go on.
+
+<!-- only: project -->
+The console links below already open the project you named.
+<!-- /only -->
 
 ### 2. Turn on the Google Drive API
 
@@ -44,19 +55,24 @@ minutes.
    - **Contact information:** your email.
    - Tick the agreement and click **Create**.
 2. **Choose the audience** on the [Audience page](https://console.cloud.google.com/auth/audience):
-   - **Internal**: only if you use **Google Workspace** and will connect an
-     account in the same organisation. There's no Testing status, no 7-day
-     expiry, and no warning screen. This is the easiest choice when available.
-   - **External**: for Gmail accounts, or a Workspace account outside the
-     project's organisation. **Then click Publish app** under *Publishing
-     status* and confirm, so the status reads **In production**.
+   <!-- only: gmail -->
+   - **External**: for Gmail and other personal Google accounts, or a
+     Workspace account outside the project's organisation. **Then click
+     Publish app** under *Publishing status* and confirm, so the status reads
+     **In production**.
 
-   Publishing doesn't make anything public. It only means Google stops
-   expiring your connection every 7 days. Google may say the app needs
-   verification. You don't need it for your own site; see step 7.
+     Publishing doesn't make anything public. It only means Google stops
+     expiring your connection every 7 days. Google may say the app needs
+     verification. You don't need it for your own site; see step 7.
 
-   If you'd rather stay in Testing for now, add your Google account under
-   **Test users** on the same page, and expect to reconnect weekly.
+     If you'd rather stay in Testing for now, add your Google account under
+     **Test users** on the same page, and expect to reconnect weekly.
+   <!-- /only -->
+   <!-- only: workspace -->
+   - **Internal** (Google Workspace): if you will connect an account in the
+     project's own organisation. There's no Testing status, no 7-day expiry,
+     and no warning screen. This is the easiest choice when available.
+   <!-- /only -->
 3. Optionally, on the [Branding page](https://console.cloud.google.com/auth/branding),
    check the app name and support email. A logo isn't needed, and adding one
    can trigger a verification request, so leave it empty.
@@ -77,7 +93,10 @@ site need:
 What they mean: `drive.file` only lets the app see files it created itself
 (Google calls it "non-sensitive"), which suits backups. `drive.readonly` can read
 all your Drive files and `drive` can change them; Google calls these
-"restricted", which is why step 7's warning appears.
+"restricted".
+<!-- only: gmail -->
+That's why step 7's warning appears.
+<!-- /only -->
 
 If you install another Drive plugin later, add its scopes here too and click
 **Reconnect** on the **Accounts** tab.
@@ -120,7 +139,9 @@ Treat this file like a password: don't email it or commit it anywhere.
 3. Click **Connect** on the new account. A Google window opens (allow pop-ups
    for this site if nothing appears).
 4. Choose the Google account whose Drive the site should use.
+   <!-- only: gmail -->
 5. If Google says **"Google hasn't verified this app"**, see step 7.
+   <!-- /only -->
 6. On the consent screen, **tick every box** Google shows, then click
    **Continue**. Leaving a box unticked means that permission isn't granted, and
    the plugin that needs it fails with
@@ -130,6 +151,7 @@ Treat this file like a password: don't email it or commit it anywhere.
 
 Then click **Test**, and set each Drive plugin to this account's name.
 
+<!-- only: gmail -->
 ### 7. "Google hasn't verified this app"
 
 When an app asks for restricted scopes (`drive.readonly` or `drive`) and Google
@@ -145,6 +167,7 @@ only redirect URI is your own site, and the credentials never leave it. Google's
 review exists to protect people from *other* people's apps. An unverified app is
 limited to 100 users in total, which a single site never gets near. You don't
 need to apply for verification.
+<!-- /only -->
 
 ### Reconnecting, disconnecting and removing
 

@@ -7,17 +7,19 @@ You set up one or more **accounts** here, and each of those plugins picks one.
 There are two kinds of account. Pick one with this table, follow its guide, and
 then add the account on the **Accounts** tab.
 
-|  | Service account | OAuth (your Google account) |
+|  | OAuth (your Google account) | Service account |
 |---|---|---|
-| **Works with** | Google Workspace, with a Shared Drive or a folder shared with it | Any Gmail or Workspace account |
-| **Who owns the files it creates** | The Shared Drive | You, and they count against your storage (15 GB free) |
-| **Keeps working unattended** | Yes, it never expires | Yes, once the Google client is **In production** (or **Internal**) |
-| **Can upload into My Drive** | **No**: service accounts have no storage | Yes |
+| **Works with** | Any Gmail or Workspace account | Google Workspace, with a Shared Drive or a folder shared with it |
+| **Who owns the files it creates** | You, and they count against your storage (15 GB free) | The Shared Drive |
+| **Keeps working unattended** | Yes, once the Google client is **In production** (or **Internal**) | Yes, it never expires |
+| **Can upload into My Drive** | Yes | **No**: service accounts have no storage |
 | **Can read a folder you share with it** | Yes | Yes |
-| **Setup time** | About 5 minutes, plus sharing a folder | About 10 minutes, plus clicking **Connect** |
-| **Guide** | [Service account guide](service-account.md) | [OAuth guide](oauth.md) |
+| **Setup time** | About 10 minutes, plus clicking **Connect** | About 5 minutes, plus sharing a folder |
+| **Guide** | [OAuth guide](oauth.md) | [Service account guide](service-account.md) |
 
-**If you have a Shared Drive, use a service account. Otherwise use OAuth.**
+**Most people: use OAuth** with your Google account. A service account is an
+alternative for Google Workspace sites with a Shared Drive that want a
+credential no person owns.
 
 A few things that are true whichever kind you pick:
 

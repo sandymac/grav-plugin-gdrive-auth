@@ -1,3 +1,13 @@
+# v0.1.3
+## 09/29/2026
+
+1. [](#new)
+    * **Guided setup** tab, first on the settings page: a few questions (which Google account, personal or Workspace, Shared Drive, admin rights, optional Cloud project ID) and only the steps that apply, with every Cloud console link opening your project. OAuth is recommended for everyone; the service account is the alternative for Workspace with a Shared Drive. Answers stay in your browser; the email is never sent.
+    * `GET /api/v1/gdrive/guide` renders it from the same `docs/setup/*.md`, whose `<!-- only: … -->` markers (invisible on GitHub) mark the path-specific parts. The full guides stay complete.
+1. [](#improved)
+    * The personal-account (OAuth) path comes first: Start here's table, the recommendation, the tab order (OAuth guide before Service account guide), the OAuth guide's audience step, and the Accounts tab's type picker.
+    * Tables on the settings page have padded columns (Admin2's display fields had none).
+
 # v0.1.2
 ## 09/29/2026
 

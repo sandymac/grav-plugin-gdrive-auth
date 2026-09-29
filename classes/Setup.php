@@ -24,6 +24,13 @@ final class Setup
     private const TABS = ['start-here' => 'start', 'service-account' => 'service_account', 'oauth' => 'oauth', 'troubleshooting' => 'troubleshooting'];
     private const SCOPE_PREFIX = 'https://www.googleapis.com/auth/';
     private const TYPE_LABEL = ['service_account' => 'Service account', 'oauth' => 'OAuth'];
+    /** Google Cloud project IDs: 6–30 chars, lowercase letter first, no trailing hyphen. */
+    public const PROJECT_ID = '/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/';
+    /** `<!-- only: a,b+c -->` … `<!-- /only -->`, each marker on its own line (indent allowed, for list items). */
+    private const ONLY = '/^[ \t]*<!--\s*only:\s*([a-z0-9+, -]*?)\s*-->[ \t]*\R(.*?)^[ \t]*<!--\s*\/only\s*-->[ \t]*(?:\R|$)/ms';
+    private const MARKER = '/^[ \t]*<!--\s*\/?only\b.*?-->[ \t]*(?:\R|$)/m';
+    /** Admin2's display field has Tailwind's preflight (padding 0) and no table CSS; inline style survives its DOMPurify. */
+    private const CELL = 'padding:6px 14px;vertical-align:top;text-align:left;border-bottom:1px solid rgba(127,127,127,.3)';
 
     /**
      * Account picker options for other plugins' blueprints:
@@ -81,7 +88,185 @@ final class Setup
             return "The {$name} guide is missing from this install of the plugin.";
         }
 
-        return self::render($md, self::values());
+        return self::padTables(self::render((string) preg_replace(self::MARKER, '', $md), self::values()));
+    }
+
+    /**
+     * The Guided setup tab's steps, as HTML: a one-line summary of the choice,
+     * the method's guide filtered to this profile (filterGuide), and what to do
+     * on the Accounts tab afterwards. Only our own markdown is rendered (Parsedown
+     * safe mode); the profile is whitelisted, and the project ID (matching
+     * PROJECT_ID) is the only input that reaches the output.
+     *
+     * @internal
+     * @param array<string, mixed> $profile kind, method, shared_drive, admin, project (see guideProfile)
+     */
+    public static function guided(array $profile): string
+    {
+        try {
+            $p = self::guideProfile($profile);
+        } catch (\InvalidArgumentException $e) {
+            return '<p>' . htmlspecialchars($e->getMessage(), ENT_QUOTES) . '</p>';
+        }
+        try {
+            $declarations = Gdrive::scopes();
+        } catch (\Throwable) {
+            $declarations = [];
+        }
+        $tags = self::guideTags($p, $declarations);
+        $md = @file_get_contents(dirname(__DIR__) . '/docs/setup/' . ($p['method'] === 'sa' ? 'service-account' : 'oauth') . '.md');
+        if ($md === false) {
+            return '<p>The setup guide is missing from this install of the plugin.</p>';
+        }
+        $md = self::render(self::intro($p, $tags) . "\n\n" . self::filterGuide($md, $tags) . "\n\n" . self::then($p['method'], $declarations), self::values());
+
+        return self::html($p['project'] !== '' ? self::withProject($md, $p['project']) : $md);
+    }
+
+    /**
+     * Keeps a `<!-- only: … -->` block when any comma-separated entry is
+     * active; an entry is `tag`, `not-tag` (active when tag isn't) or `a+b`
+     * (all of them). Drops every marker line. No nesting. Pure.
+     *
+     * @internal
+     * @param string[] $tags
+     */
+    public static function filterGuide(string $md, array $tags): string
+    {
+        $on = static fn (string $t): bool => in_array($t, $tags, true) || (str_starts_with($t, 'not-') && !in_array(substr($t, 4), $tags, true));
+        $md = (string) preg_replace_callback(self::ONLY, static function (array $m) use ($on): string {
+            foreach (explode(',', $m[1]) as $any) {
+                if (array_filter(explode('+', trim($any)), static fn (string $t): bool => !$on(trim($t))) === []) {
+                    return $m[2];
+                }
+            }
+
+            return '';
+        }, $md);
+
+        return (string) preg_replace(self::MARKER, '', $md);
+    }
+
+    /**
+     * Checks GET /gdrive/guide's query against fixed whitelists and fills the
+     * defaults: OAuth unless a method is given, and admin "no" for Workspace.
+     * Unknown keys are ignored. Throws \InvalidArgumentException, never
+     * echoing the input. Pure.
+     *
+     * @internal
+     * @param array<string, mixed> $q
+     * @return array{kind: string, method: string, shared_drive: string, admin: string, project: string}
+     */
+    public static function guideProfile(array $q): array
+    {
+        $pick = static function (string $key, array $allowed) use ($q): string {
+            $v = $q[$key] ?? '';
+            if (!is_string($v) || !in_array($v, $allowed, true)) {
+                throw new \InvalidArgumentException(sprintf('"%s" must be one of: %s%s.', $key, implode(', ', array_filter($allowed)), in_array('', $allowed, true) ? ', or empty' : ''));
+            }
+
+            return $v;
+        };
+        $kind = $pick('kind', ['gmail', 'workspace']);
+        $work = $kind === 'workspace';
+        $shared = $pick('shared_drive', ['', 'yes', 'no', 'unsure']);
+        $admin = $pick('admin', ['', 'yes', 'no']);
+        $method = $pick('method', ['', 'oauth', 'sa']);
+        $project = $q['project'] ?? '';
+        if (!is_string($project) || ($project !== '' && preg_match(self::PROJECT_ID, $project) !== 1)) {
+            throw new \InvalidArgumentException('"project" must be a Google Cloud project ID: 6–30 lowercase letters, digits and hyphens, starting with a letter.');
+        }
+
+        return [
+            'kind' => $kind,
+            'method' => $method ?: 'oauth',
+            'shared_drive' => $work ? $shared : '',
+            'admin' => $work ? ($admin ?: 'no') : '',
+            'project' => $project,
+        ];
+    }
+
+    /**
+     * The filterGuide tags for a checked profile. `backup` and `gallery` come
+     * from what plugins declared (drive.file or drive; drive.readonly); with
+     * nothing declared, both. Pure.
+     *
+     * @internal
+     * @param array{kind: string, method: string, shared_drive: string, admin: string, project: string} $p
+     * @param array<int, array{plugin: string, account: string, scopes: string[]}> $declarations
+     * @return string[]
+     */
+    public static function guideTags(array $p, array $declarations): array
+    {
+        $scopes = array_merge([], ...array_column($declarations, 'scopes'));
+        $write = array_intersect($scopes, [Drive::SCOPE_FILE, Drive::SCOPE_FULL]) !== [];
+        $read = in_array(Drive::SCOPE_READONLY, $scopes, true);
+        $tags = [$p['kind'], $p['method']];
+        if ($p['shared_drive'] === 'yes') {
+            $tags[] = 'shared-drive';
+        }
+        if ($p['kind'] === 'workspace') {
+            $tags[] = $p['admin'] === 'yes' ? 'admin' : 'not-admin';
+        }
+        if ($p['project'] !== '') {
+            $tags[] = 'project';
+        }
+        if ($write || !$read) {
+            $tags[] = 'backup';
+        }
+        if ($read || !$write) {
+            $tags[] = 'gallery';
+        }
+
+        return $tags;
+    }
+
+    /**
+     * Adds `project=<id>` to every Cloud console URL so each link opens that
+     * project, merging with an existing query and keeping any #fragment.
+     * Other URLs are left alone. Pure.
+     *
+     * @internal
+     */
+    public static function withProject(string $text, string $project): string
+    {
+        if (preg_match(self::PROJECT_ID, $project) !== 1) {
+            return $text;
+        }
+
+        return (string) preg_replace_callback('~https://console\.cloud\.google\.com(?![\w.-])[^\s)<>"\'`\]]*~', static function (array $m) use ($project): string {
+            [$url, $frag] = array_pad(explode('#', $m[0], 2), 2, null);
+            if (preg_match('/[?&]project=/', $url) === 1) {
+                return $m[0];
+            }
+            $sep = str_contains($url, '?') ? (str_ends_with($url, '?') || str_ends_with($url, '&') ? '' : '&') : '?';
+
+            return $url . $sep . 'project=' . $project . ($frag !== null ? '#' . $frag : '');
+        }, $text);
+    }
+
+    /**
+     * Pipe tables → HTML tables with padded cells, for Admin2's display field
+     * (see CELL); GitHub keeps rendering the markdown. $inline renders one
+     * cell's markdown. Pure.
+     * ponytail: splits cells on every `|`, so a cell can't contain one (not
+     * even in `code`); none of the guides needs it.
+     *
+     * @internal
+     * @param callable(string): string $inline
+     */
+    public static function tables(string $md, callable $inline): string
+    {
+        return (string) preg_replace_callback('/^\|.*\|[ \t]*\R\|[ \t:|-]+\|[ \t]*(?:\R\|.*\|[ \t]*)*(?:\R|$)/m', static function (array $m) use ($inline): string {
+            $lines = preg_split('/\R/', trim($m[0])) ?: [];
+            $row = static fn (string $line, string $tag): string => '<tr>' . implode('', array_map(
+                static fn (string $c): string => sprintf('<%1$s style="%2$s">%3$s</%1$s>', $tag, self::CELL . ($tag === 'th' ? ';font-weight:600' : ''), $inline(trim($c))),
+                explode('|', trim(trim($line), '|'))
+            )) . '</tr>';
+            $body = implode('', array_map(static fn (string $l): string => $row($l, 'td'), array_slice($lines, 2)));
+
+            return '<table style="border-collapse:collapse;margin:0.75em 0"><thead>' . $row($lines[0], 'th') . '</thead><tbody>' . $body . "</tbody></table>\n";
+        }, $md);
     }
 
     /** Per-account status as of page load, every ✘ linking to its fix. */
@@ -137,7 +322,7 @@ final class Setup
             $out .= sprintf("| %s | %s | %s | %s |\n", self::clean($d['plugin']), self::clean($d['account']), self::scopeList($d['scopes']), self::verdict($row ?: null, $d['scopes']));
         }
 
-        return self::safe($out);
+        return self::safe(self::padTables($out));
     }
 
     /**
@@ -297,6 +482,63 @@ final class Setup
                 return implode("\n", array_unique($lines));
             }, '- No installed plugin has declared any yet. Galleries need `' . Drive::SCOPE_READONLY . '`; backups need `' . Drive::SCOPE_FILE . '`.'),
         ];
+    }
+
+    /**
+     * @param array{kind: string, method: string, shared_drive: string, admin: string, project: string} $p
+     * @param string[] $tags
+     */
+    private static function intro(array $p, array $tags): string
+    {
+        $who = $p['kind'] === 'gmail' ? 'a personal Google account' : 'a Google Workspace account';
+        $how = $p['method'] === 'oauth'
+            ? "You'll set up an **OAuth** account for {$who}: the site acts as that account, and the files it creates are yours. "
+                . ($p['kind'] === 'gmail' ? "You'll publish your Google app, so the connection doesn't expire after 7 days." : 'An **Internal** app keeps it simple: no 7-day expiry and no warning screen.')
+            : "You'll set up a **service account** for {$who}: a Google identity of its own, with a key file that never expires. "
+                . (in_array('shared-drive', $tags, true) ? 'It writes into a Shared Drive you add it to.' : 'Without a Shared Drive it can only read folders you share with it.');
+        $needs = array_filter([in_array('gallery', $tags, true) ? 'reading shared folders (galleries)' : '', in_array('backup', $tags, true) ? 'writing files (backups)' : '']);
+
+        return $how . "\n\nThese steps cover " . implode(' and ', $needs) . '. The full guides are on the other tabs.';
+    }
+
+    /** @param array<int, array{plugin: string, account: string, scopes: string[]}> $declarations */
+    private static function then(string $method, array $declarations): string
+    {
+        $names = array_values(array_unique(array_map(static fn (array $d): string => '**' . self::clean($d['account']) . '**', $declarations)));
+        $out = "### Then\n\n1. On the [Accounts](#accounts_tab) tab, add the account"
+            . ($names !== [] ? ' named ' . implode(' or ', $names) . ' (the name the plugins expect)' : '')
+            . ': choose **' . ($method === 'sa' ? 'Service account' : 'OAuth') . "** and upload the JSON file from above.\n"
+            . '2. ' . ($method === 'sa' ? 'Click' : 'Click **Connect**, then click') . " **Test**. A ✘ links to its fix in [Troubleshooting](troubleshooting.md).\n"
+            . "3. In each Drive plugin's settings, pick the account" . ($declarations === [] ? " by that name.\n" : ":\n");
+        foreach ($declarations as $d) {
+            $out .= sprintf("   - **%s** uses **%s**\n", self::clean($d['plugin']), self::clean($d['account']));
+        }
+
+        return $out;
+    }
+
+    /** Our own markdown → HTML; safe mode escapes any raw HTML. Without Grav (tests) it's shown escaped. */
+    private static function html(string $md): string
+    {
+        if (!class_exists(\ParsedownExtra::class)) {
+            return '<pre>' . htmlspecialchars($md, ENT_QUOTES) . '</pre>';
+        }
+        $parser = new \ParsedownExtra();
+        $parser->setSafeMode(true);
+
+        return (string) $parser->text($md);
+    }
+
+    /** tables() with Parsedown for the cells; the markdown unchanged where Parsedown isn't loaded (tests). */
+    private static function padTables(string $md): string
+    {
+        if (!class_exists(\Parsedown::class)) {
+            return $md;
+        }
+        $parser = new \Parsedown();
+        $parser->setSafeMode(true);
+
+        return self::tables($md, static fn (string $cell): string => $parser->line($cell));
     }
 
     /**

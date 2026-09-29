@@ -10,6 +10,13 @@ can read anything you share with it, but it can only *create* files inside a
 **Shared Drive** (a Google Workspace feature). If you want backups in a personal
 My Drive, use the [OAuth guide](oauth.md) instead.
 
+<!-- only: gmail -->
+**With a personal Google account** (Gmail, or a personal account on your own
+email address) you have no Shared Drive, so a service account can't write
+anything to your Drive: it can only read folders you share with it. That
+suits a gallery; backups need an [OAuth account](oauth.md).
+<!-- /only -->
+
 You need a Google account that can create a Google Cloud project. The whole
 thing takes about five minutes.
 
@@ -22,6 +29,10 @@ thing takes about five minutes.
    give it a name such as "My website", and click **Create**.
 3. Make sure the new project is selected in the picker before you go on. Every
    link below opens in whichever project is selected.
+
+<!-- only: project -->
+The console links below already open the project you named.
+<!-- /only -->
 
 ### 2. Turn on the Google Drive API
 
@@ -53,12 +64,27 @@ If you skip this, **Test** fails with
    somewhere safe, don't email it, and never commit it to a repository. Google
    can't show it again; if you lose it, delete the key and create a new one.
 
+<!-- only: workspace -->
 > **"Service account key creation is disabled"?** Your Google Workspace
 > organisation has the policy `iam.disableServiceAccountKeyCreation` (or its
 > newer managed form, `iam.managed.disableServiceAccountKeyCreation`) turned on.
-> Organisations created since 2024 have it on by default. See
-> [Key creation is blocked](troubleshooting.md#org-policy-key-creation) for how
-> an organisation administrator allows keys for just this one project.
+> Organisations created since 2024 have it on by default.
+<!-- /only -->
+<!-- only: admin -->
+>
+> See [Key creation is blocked](troubleshooting.md#org-policy-key-creation) for
+> how an organisation administrator allows keys for just this one project.
+<!-- /only -->
+<!-- only: workspace+not-admin -->
+>
+> **Not the administrator?** Then ask your Workspace administrator to allow
+> service-account keys for this project: with the project selected, override
+> the organisation policy `iam.disableServiceAccountKeyCreation` (and
+> `iam.managed.disableServiceAccountKeyCreation`, if it's enforced) with
+> **Enforcement: Off**. The steps are under
+> [Key creation is blocked](troubleshooting.md#org-policy-key-creation). If
+> they won't, use an [OAuth account](oauth.md) instead.
+<!-- /only -->
 
 ### 5. Upload the key here
 
@@ -76,10 +102,13 @@ it. The account then shows the service account's email.
 The service account can only see what you share with it, exactly like a
 person. Use its email: {{sa_emails}}
 
+<!-- only: gallery -->
 - **For a gallery (read only):** in [Google Drive](https://drive.google.com/),
   right-click the folder → **Share** → **Share**, paste the service account's
   email, choose **Viewer**, untick **Notify people** (nobody reads that inbox),
   and click **Share**.
+<!-- /only -->
+<!-- only: backup -->
 - **For backups (writing):** use a **Shared Drive**. Open the Shared Drive,
   click its name at the top → **Manage members**, add the service account's
   email as **Content manager**, and click **Send**. Content manager lets it add,
@@ -89,6 +118,7 @@ person. Use its email: {{sa_emails}}
 Why not a folder in My Drive for backups? Files a service account creates in
 your My Drive would belong to it, and it has no storage quota, so Google refuses
 with [`storageQuotaExceeded`](troubleshooting.md#storage-quota-exceeded).
+<!-- /only -->
 
 ### 7. Click Test
 

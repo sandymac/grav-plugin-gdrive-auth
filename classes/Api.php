@@ -105,6 +105,23 @@ final class Api extends AbstractApiController
         });
     }
 
+    /** GET /gdrive/guide?kind=&method=&shared_drive=&admin=&project=: the Guided setup steps as HTML (422 on anything off the whitelist). */
+    public function guide(ServerRequestInterface $request): ResponseInterface
+    {
+        $this->requirePermission($request, self::PERMISSION);
+        try {
+            $profile = Setup::guideProfile($request->getQueryParams());
+        } catch (\InvalidArgumentException $e) {
+            throw new ValidationException($e->getMessage());
+        }
+
+        return ApiResponse::create([
+            'html' => Setup::guided($profile),
+            'method' => $profile['method'],
+            'tags' => Setup::guideTags($profile, Gdrive::scopes()),
+        ]);
+    }
+
     /** @return array{accounts: array, redirect_uri: string, wanted: string[]} */
     private function view(): array
     {

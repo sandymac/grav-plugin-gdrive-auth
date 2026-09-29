@@ -15,14 +15,17 @@ Requires PHP 8.3+ and Grav 2.0.23+.
 
 ## Setup
 
-Open **Plugins → Google Drive Library** in Admin2. The page has the guides as tabs,
-with this site's redirect URI, service-account emails and needed scopes filled
-in, and an **Accounts** tab to upload credentials, **Test** and **Connect**.
-The same guides, readable here:
+Open **Plugins → Google Drive Library** in Admin2 and start on the **Guided
+setup** tab: answer a few questions (which Google account, personal or
+Workspace, and so on) and it shows only the steps you need, with the console
+links opening your Cloud project. Most people want OAuth with their own Google
+account. The other tabs have the full guides, with this site's redirect URI,
+service-account emails and needed scopes filled in, and an **Accounts** tab to
+upload credentials, **Test** and **Connect**. The same guides, readable here:
 
-1. [Start here](docs/setup/start-here.md): service account or OAuth?
-2. [Service account guide](docs/setup/service-account.md)
-3. [OAuth guide](docs/setup/oauth.md)
+1. [Start here](docs/setup/start-here.md): OAuth or service account?
+2. [OAuth guide](docs/setup/oauth.md)
+3. [Service account guide](docs/setup/service-account.md)
 4. [Troubleshooting](docs/setup/troubleshooting.md), one entry per error code
 
 Managing accounts needs the **Manage Google Drive accounts** permission
@@ -157,6 +160,7 @@ All need `api.gdrive.manage`. Success is `{"data": …}`; errors are
 | `DELETE /gdrive/accounts/{name}` | Revokes (OAuth), deletes the files, drops it from config. The list |
 | `POST /gdrive/accounts/{name}/test` | A real `about.get` with the declared scopes; stored in `user/data/gdrive/<name>.test.json`. `{result, …list}` |
 | `POST /gdrive/accounts/{name}/connect` | `{url}`: Google's consent URL for the declared ∪ granted scopes (OAuth only) |
+| `GET /gdrive/guide?kind=&method=&shared_drive=&admin=&project=` | `{html, method, tags}`: the Guided setup steps. `kind` is `gmail` (personal) or `workspace`; `method` `oauth` (default) or `sa`; `shared_drive` `yes\|no\|unsure`; `admin` `yes\|no`; `project` a Cloud project ID. Anything else is a 422 |
 
 ### The transport test seam
 
