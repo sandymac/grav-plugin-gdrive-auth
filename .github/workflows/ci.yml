@@ -1,0 +1,46 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.3', '8.4']  # 8.3 matches Grav 2 core's ^8.3; 8.4 catches forward-compat breakage
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+
+      - run: git ls-files '*.php' | xargs -P4 -n1 php -l > /dev/null
+
+      - run: php tests/smoke.php
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - run: pipx install yamllint && yamllint blueprints.yaml gdrive.yaml
+
+  phpstan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: phpstan
+
+      # phpstan.neon resolves Grav symbols from a real install at
+      # .gravtest/grav-admin — recreate the local dev layout. Vendors are for
+      # symbol scanning only, hence --ignore-platform-reqs.
+      - run: |
+          git clone --depth 1 -b 2.0.23 https://github.com/getgrav/grav .gravtest/grav-admin
+          composer install -q -d .gravtest/grav-admin --no-dev --ignore-platform-reqs
+
+      - run: phpstan analyse --memory-limit=1G

@@ -1,0 +1,33 @@
+name: Google Drive
+slug: gdrive
+type: plugin
+version: 0.1.0
+description: Shared Google Drive library for Grav plugins. Service-account and OAuth (bring your own client) accounts, a thin Drive v3 client, and the OAuth callback. No Composer dependencies.
+icon: google
+author:
+  name: Sandy McArthur
+  email: sandy@mcarthur.org
+  url: https://sandy.mcarthur.org
+homepage: https://github.com/sandymac/grav-plugin-gdrive
+bugs: https://github.com/sandymac/grav-plugin-gdrive/issues
+keywords: google drive, google, oauth, service account, library
+license: MIT
+compatibility:
+  grav: ["2.0"]
+
+dependencies:
+  - { name: grav, version: ">=2.0.23" }
+
+form:
+  validation: loose
+  fields:
+    enabled:
+      type: toggle
+      label: PLUGIN_ADMIN.PLUGIN_STATUS
+      highlight: 1
+      default: true
+      options:
+        1: PLUGIN_ADMIN.ENABLED
+        0: PLUGIN_ADMIN.DISABLED
+      validate:
+        type: bool

@@ -1,0 +1,7 @@
+actions:
+  api.gdrive:
+    type: access
+    label: Google Drive
+    actions:
+      manage:
+        label: Manage Google Drive accounts

@@ -1,0 +1,3 @@
+enabled: true
+# <name>: { type: service_account | oauth }; the credentials themselves live in user/data/gdrive/, never here
+accounts: {}

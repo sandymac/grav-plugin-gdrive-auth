@@ -1,0 +1,20 @@
+parameters:
+    level: 6
+    phpVersion: 80300
+    ignoreErrors:
+        # array value-type docblocks add nothing to Drive's raw JSON resources
+        - identifier: missingType.iterableValue
+        # Grav core quirk: Cache::save()'s docblock narrows $data to array|object|int,
+        # but it forwards to Doctrine CacheProvider::save($id, mixed $data), and the
+        # cached access token is a string that cachedToken() re-checks with is_string().
+        -
+            message: '#Cache\:\:save\(\) expects array\|int\|object, string given#'
+            path: classes/TokenCache.php
+    paths:
+        - gdrive.php
+        - classes
+    # Symbol resolution comes from a real Grav install at .gravtest/grav-admin
+    # (CI recreates the same layout — see .github/workflows/ci.yml). This plugin
+    # depends on nothing but Grav core, so core's autoloader is the whole list.
+    bootstrapFiles:
+        - .gravtest/grav-admin/vendor/autoload.php
