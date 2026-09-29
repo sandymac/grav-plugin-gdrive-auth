@@ -95,7 +95,7 @@ class GdriveGuide extends HTMLElement {
             html = (await this._call(`/gdrive/guide?${this._query()}`)).html || '';
         } catch (e) {
             const text = e.status === 404
-                ? 'The Google Drive Library plugin’s API isn’t available. Enable the plugin, save, and reload this page.'
+                ? 'The Google Drive Auth plugin’s API isn’t available. Enable the plugin, save, and reload this page.'
                 : e.status === 403 ? 'You need the “Manage Google Drive accounts” permission (api.gdrive.manage) to see the guided setup.' : e.detail;
             html = `<p class="note bad" role="alert">${esc(text)}</p>`;
         }

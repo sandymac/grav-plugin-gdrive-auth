@@ -1,4 +1,4 @@
-# Google Drive Library for Grav
+# Google Drive Auth for Grav
 
 The shared Google Drive library for Grav 2 plugins. It manages Google
 accounts (service accounts, and OAuth user accounts through your own Google
@@ -15,7 +15,7 @@ Requires PHP 8.3+ and Grav 2.0.23+.
 
 ## Setup
 
-Open **Plugins → Google Drive Library** in Admin2 and start on the **Guided
+Open **Plugins → Google Drive Auth** in Admin2 and start on the **Guided
 setup** tab: answer a few questions (which Google account, personal or
 Workspace, and so on) and it shows only the steps you need, with the console
 links opening your Cloud project. Most people want OAuth with their own Google

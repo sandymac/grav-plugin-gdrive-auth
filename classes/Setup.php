@@ -56,7 +56,7 @@ final class Setup
      */
     public static function consumerNotice(string $plugin): string
     {
-        $link = 'Set up Google Drive access in **Plugins → Google Drive Library**.';
+        $link = 'Set up Google Drive access in **Plugins → Google Drive Auth**.';
         try {
             $link = sprintf('[Set up Google Drive access →](%s)', self::settingsUrl());
             $mine = array_values(array_filter(Gdrive::scopes(), static fn (array $d): bool => $d['plugin'] === $plugin));

@@ -139,11 +139,11 @@ final class OAuthUser implements Credentials
     {
         $stored = $this->stored();
         if ($stored === null) {
-            throw new DriveException('gdrive: this Google account is not connected; click Connect on the Google Drive Library settings page.', 'not_connected');
+            throw new DriveException('gdrive: this Google account is not connected; click Connect on the Google Drive Auth settings page.', 'not_connected');
         }
         $missing = array_diff($scopes, (array) ($stored['scopes'] ?? []));
         if ($missing !== []) {
-            throw new DriveException('gdrive: not granted: ' . implode(' ', $missing) . '. Reconnect the account on the Google Drive Library settings page to grant it.', 'scope_not_granted');
+            throw new DriveException('gdrive: not granted: ' . implode(' ', $missing) . '. Reconnect the account on the Google Drive Auth settings page to grant it.', 'scope_not_granted');
         }
         $key = $this->tokenKey($scopes);
         $cached = $this->cachedToken($key);

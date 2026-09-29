@@ -1,3 +1,9 @@
+# v0.1.6
+## 09/29/2026
+
+1. [](#improved)
+    * Renamed to **Google Drive Auth**: what it gives the other Google Drive plugins is the Google sign-in (accounts and credentials).
+
 # v0.1.5
 ## 09/29/2026
 
