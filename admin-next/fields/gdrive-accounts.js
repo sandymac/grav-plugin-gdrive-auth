@@ -188,9 +188,8 @@ class GdriveAccounts extends HTMLElement {
 
     async _remove(name) {
         const message = `Remove the Google Drive account "${name}"? Its credential files are deleted from this site${this._account(name)?.type === 'oauth' ? ' and the site\u2019s access is revoked at Google' : ''}. Plugins set to use it stop working until you add it again.`;
-        const ok = window.__GRAV_DIALOGS?.confirm
-            ? await window.__GRAV_DIALOGS.confirm({ title: 'Remove account', message, confirmLabel: 'Remove', variant: 'destructive' })
-            : window.confirm(message);
+        // admin2 >=2.1.24 (a declared dependency) always provides __GRAV_DIALOGS.
+        const ok = await window.__GRAV_DIALOGS.confirm({ title: 'Remove account', message, confirmLabel: 'Remove', variant: 'destructive' });
         if (!ok) return;
         const oauth = this._account(name)?.type === 'oauth' && this._account(name)?.connected;
         await this._act(name, 'remove', async () => {

@@ -116,7 +116,10 @@ If you install another compatible Drive plugin later, add its scopes here too an
    `http://` works for `localhost` only), so the site needs a certificate. If
    this address is wrong (say the site sits behind a proxy and shows `http://`),
    fix the site's URL first; Connect will otherwise fail with
-   [`redirect_uri_mismatch`](troubleshooting.md#redirect-uri-mismatch).
+   [`redirect_uri_mismatch`](troubleshooting.md#redirect-uri-mismatch). The address
+   comes from `system.custom_base_url` when that is set, otherwise from the
+   request that rendered this page, so set `custom_base_url` on a site behind a
+   proxy or CDN.
 6. Click **Create**.
 7. In the dialog that opens, click **Download JSON**. Google now shows a new
    client's secret only at this point, so download it before closing the dialog.

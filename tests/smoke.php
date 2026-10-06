@@ -243,6 +243,7 @@ $google = static function (string $method, string $url, array $opts) use (&$goog
 };
 $accounts = new Accounts(['accounts' => ['personal' => ['type' => 'oauth']]], $tmp, null, $google);
 check(reason(static fn () => $accounts->saveCredential('../x', 'oauth', (string) json_encode($client))) === 'bad_credential', 'account name ../x is refused');
+check(reason(static fn () => $accounts->saveCredential("site\n", 'oauth', (string) json_encode($client))) === 'bad_credential', 'a trailing newline in an account name is refused (D modifier)');
 check(reason(static fn () => $accounts->saveCredential('Big', 'oauth', (string) json_encode($client))) === 'bad_credential', 'uppercase account names are refused');
 check(reason(static fn () => $accounts->status('../../etc')) === 'bad_credential', 'status() validates the name too');
 check(reason(static fn () => $accounts->saveCredential('personal', 'oauth', (string) json_encode($sa))) === 'bad_credential', 'an SA key is refused for an OAuth account');
@@ -284,6 +285,7 @@ check(str_starts_with($authUrl, OAuthUser::AUTH_URI . '?'), 'auth URL defaults t
 check($aq['response_type'] === 'code' && $aq['access_type'] === 'offline' && $aq['prompt'] === 'consent' && $aq['include_granted_scopes'] === 'true' && $aq['code_challenge_method'] === 'S256' && $aq['scope'] === Drive::SCOPE_FILE && $aq['client_id'] === 'cid.apps.googleusercontent.com', 'auth URL carries offline, consent, PKCE S256 and the scopes');
 check(strlen($aq['state']) === 64 && is_file($tmp . '/oauth-state/' . hash('sha256', $aq['state']) . '.json'), 'state is 32 random bytes, stored by its sha256');
 check(!str_contains((string) file_get_contents($tmp . '/oauth-state/' . hash('sha256', $aq['state']) . '.json'), $aq['state']), 'the raw state is never written to disk');
+check(reason(static fn () => $accounts->finishConnect($aq['state'] . "\n", 'CODE')) === 'bad_state' && is_file($tmp . '/oauth-state/' . hash('sha256', $aq['state']) . '.json'), 'a state with a trailing newline is refused without consuming the real one');
 
 $connecting = null;
 $done = $accounts->finishConnect($aq['state'], 'CODE', $connecting);
@@ -399,6 +401,7 @@ check(Setup::accountBody(['name' => 'site', 'type' => 'oauth', 'json' => '{}', '
 foreach ([
     'not an object' => 'x',
     'a path as the name' => ['name' => '../etc', 'type' => 'oauth', 'json' => '{}'],
+    'a name with a trailing newline' => ['name' => "site\n", 'type' => 'oauth', 'json' => '{}'],
     'an uppercase name' => ['name' => 'Site', 'type' => 'oauth', 'json' => '{}'],
     'an unknown type' => ['name' => 'site', 'type' => 'jwt', 'json' => '{}'],
     'json as an object' => ['name' => 'site', 'type' => 'oauth', 'json' => ['web' => []]],
@@ -463,6 +466,7 @@ foreach ([
     'a project with markup' => ['kind' => 'gmail', 'project' => '<script>x</script>'],
     'a too-short project' => ['kind' => 'gmail', 'project' => 'abc'],
     'a project ending in a hyphen' => ['kind' => 'gmail', 'project' => 'my-project-'],
+    'a project with a trailing newline' => ['kind' => 'gmail', 'project' => "my-site-123\n"],
 ] as $what => $q) {
     $err = $profileError($q);
     check($err !== null && !str_contains($err, '<') && !str_contains($err, 'My-Project'), "guideProfile() refuses {$what} without echoing it");

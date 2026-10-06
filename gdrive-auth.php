@@ -21,7 +21,7 @@ use RocketTheme\Toolbox\File\AbstractFile;
  */
 class GdriveAuthPlugin extends Plugin
 {
-    public const VERSION = '1.0.0';
+    public const VERSION = '1.0.1';
 
     /** The callback's failure text by reason: fixed strings only, never the exception's message. '' is everything else. */
     private const CONNECT_FAILED = [

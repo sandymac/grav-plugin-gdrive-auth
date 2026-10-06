@@ -33,7 +33,7 @@ final class Setup
     private const SCOPE_PREFIX = 'https://www.googleapis.com/auth/';
     private const TYPE_LABEL = ['service_account' => 'Service account', 'oauth' => 'OAuth'];
     /** Google Cloud project IDs: 6–30 chars, lowercase letter first, no trailing hyphen. */
-    public const PROJECT_ID = '/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/';
+    public const PROJECT_ID = '/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/D';
     /** `<!-- only: a,b+c -->` … `<!-- /only -->`, each marker on its own line (indent allowed, for list items). */
     private const ONLY = '/^[ \t]*<!--\s*only:\s*([a-z0-9+, -]*?)\s*-->[ \t]*\R(.*?)^[ \t]*<!--\s*\/only\s*-->[ \t]*(?:\R|$)/ms';
     private const MARKER = '/^[ \t]*<!--\s*\/?only\b.*?-->[ \t]*(?:\R|$)/m';

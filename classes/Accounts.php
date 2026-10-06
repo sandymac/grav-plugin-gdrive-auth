@@ -18,7 +18,7 @@ use Grav\Common\Cache;
  */
 final class Accounts
 {
-    public const NAME = '/^[a-z0-9][a-z0-9_-]{0,31}$/';
+    public const NAME = '/^[a-z0-9][a-z0-9_-]{0,31}$/D'; // D: "$" must not accept a trailing newline
     public const TYPES = ['service_account', 'oauth'];
     private const STATE_TTL = 600;
     public const REVOKE_FAILED = "Google couldn't be reached, so check Google Account → Third-party connections (https://myaccount.google.com/connections) and remove this site there.";
@@ -300,7 +300,7 @@ final class Accounts
      */
     private function takeState(string $state): array
     {
-        $file = preg_match('/^[0-9a-f]{64}$/', $state) === 1 ? $this->stateFile($state) : '';
+        $file = preg_match('/^[0-9a-f]{64}$/D', $state) === 1 ? $this->stateFile($state) : '';
         $raw = $file !== '' && is_file($file) ? @file_get_contents($file) : false;
         if ($raw === false || !@unlink($file)) {
             throw new DriveException('gdrive: unknown or already used OAuth state', 'bad_state');
