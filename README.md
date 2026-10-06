@@ -14,6 +14,22 @@ Plugins that use it: [gdrive-images](https://github.com/sandymac/grav-plugin-gdr
 
 Requires PHP 8.3+ and Grav 2.0.23+.
 
+## Installation
+
+Any of the usual three ways:
+
+- **GPM:** `bin/gpm install gdrive-auth`. Plugins built on it (such as
+  `gdrive-images` and `gdrive-backup`) list it as a dependency, so installing
+  one of them installs this too.
+- **Admin2:** Plugins → Add, search for **Google Drive Auth**.
+- **Manual:** download the zip from the
+  [releases page](https://github.com/sandymac/grav-plugin-gdrive-auth/releases),
+  unzip it into `user/plugins/`, and rename the folder to `gdrive-auth`, so
+  that `user/plugins/gdrive-auth/gdrive-auth.php` exists.
+
+No Composer step: the plugin has no dependencies beyond PHP's curl and openssl
+extensions, which Grav already requires.
+
 ## Setup
 
 Open **Plugins → Google Drive Auth** in Admin2 and read **Start here**
@@ -42,14 +58,6 @@ accounts:
   personal: { type: oauth }
 ```
 
-Upgrading from 0.1.12 or earlier (slug `gdrive`)? Rename
-`user/config/plugins/gdrive.yaml` to `gdrive-auth.yaml`. Until you do, the
-library reads the accounts from the old file (read-only) and logs a notice.
-
-Upgrading from 0.1.14 or earlier? Move the credential files from
-`user/data/gdrive/` into `user/data/gdrive/auth/` (a directory the web server
-can write; keep the file modes). There is no automatic migration.
-
 Their credentials live in `user/data/gdrive/auth/` under fixed names, mode 0600:
 `<name>.sa.json` (service-account key), `<name>.client.json` (OAuth client),
 `<name>.token.json` (refresh token, granted scopes, email), plus
@@ -59,7 +67,7 @@ in config. Make sure your web server refuses `user/data/`.
 ## Public API
 
 Everything below is stable under semver. Anything not listed is internal.
-Dependent plugins declare `{ name: gdrive-auth, version: '>=0.1.13' }` and should
+Dependent plugins declare `{ name: gdrive-auth, version: '>=1.0.0' }` and should
 check `class_exists(\Grav\Plugin\Gdrive\Drive::class)` before use.
 
 ### `Grav\Plugin\Gdrive\Gdrive`
@@ -187,7 +195,7 @@ callable(string $method, string $url, array $opts): array{0: int, 1: string, 2: 
 `Gdrive::setHttp($fake)` makes every client built afterwards use `$fake`
 instead of curl (`null` restores curl), so a dependent plugin's smoke test can
 stub Drive. `Drive`, `ServiceAccount`, `OAuthUser` and `Accounts` also take it
-as a constructor argument, and `Gdrive::accounts()->withHttp($http)` (0.1.11+)
+as a constructor argument, and `Gdrive::accounts()->withHttp($http)`
 returns a copy of the registry whose credentials (token refreshes included)
 use `$http`, e.g. a short-timeout, no-retry transport for a settings-page check.
 
