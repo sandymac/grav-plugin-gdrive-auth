@@ -21,8 +21,8 @@ behaviour; the decisions in §1 are settled.
   Tests pass fakes; `Gdrive::setHttp()` does it for dependent plugins.
 - **Public API is what the README lists.** Everything else is internal; keep
   the listed names and signatures stable (semver).
-- **Pattern library:** `C:\dev\grav-plugin-gdrive-images` (the gallery this
-  was extracted from) and `C:\dev\grav-plugin-mcp-server`: spl autoload
+- **Pattern library:** the sibling repos `grav-plugin-gdrive-images` (the
+  gallery this was extracted from) and `grav-plugin-mcp-server`: spl autoload
   fallback, bare-PHP `tests/smoke.php` with `check()`, PHPStan config, and a
   `VERSION` constant that smoke asserts matches `blueprints.yaml`.
 - Leave one runnable check behind for non-trivial logic. Bare PHP, fake
@@ -111,7 +111,10 @@ behaviour; the decisions in §1 are settled.
 
 ## Tooling
 
-No local PHP. Run it via Docker; from Git Bash on Windows:
+`php tests/smoke.php`, `phpstan analyse --memory-limit=1G` (needs the
+`.gravtest/grav-admin` layout that `.github/workflows/ci.yml` builds) and
+`node --check admin-next/fields/*.js`. Without a local PHP, Docker works; from
+Git Bash on Windows:
 
 ```
 MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W):/app" php:8.3-cli php /app/tests/smoke.php
