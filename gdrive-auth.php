@@ -160,6 +160,7 @@ class GdriveAuthPlugin extends Plugin
         header('Content-Type: text/html; charset=utf-8');
         header('Cache-Control: no-store');
         header('X-Content-Type-Options: nosniff');
+        header('X-Frame-Options: DENY'); // frame-ancestors below covers modern browsers
         header('Referrer-Policy: no-referrer'); // the URL carried the code and state
         header("Content-Security-Policy: default-src 'none'; script-src 'nonce-{$nonce}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
         $script = sprintf(

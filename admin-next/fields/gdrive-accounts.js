@@ -143,6 +143,10 @@ class GdriveAccounts extends HTMLElement {
                 popup?.close();
                 throw e;
             }
+            if (typeof url !== 'string' || !url.startsWith('https://accounts.google.com/')) {
+                popup?.close();
+                throw { detail: 'The sign-in address the site returned isn’t Google’s, so nothing was opened.' };
+            }
             if (popup && !popup.closed) {
                 popup.location.href = url;
                 this._notes[name] = { ok: true, pending: true, text: 'Finish signing in in the Google window. This list updates when you are done.' };

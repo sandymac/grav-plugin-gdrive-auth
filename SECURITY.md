@@ -21,6 +21,13 @@ What the plugin promises, so you know what counts as a bug:
 - The OAuth callback trusts a single-use, 10-minute, server-side state (32
   random bytes, stored by its SHA-256) plus PKCE S256; every failure is a
   generic 400.
+- The redirect URI is Grav's `rootUrl(true)` plus `/gdrive-oauth/callback`, so it
+  follows `system.custom_base_url` when set (set it behind a proxy or CDN). It is
+  fixed in the server-side state when Connect starts and reused at the token
+  exchange, and Google only redirects to a URI registered on the client, so a
+  forged `Host` header cannot send the authorization code anywhere else.
+- The callback is the only unauthenticated route. Without a valid state it does
+  one file check and writes one log line; nothing is sent to Google.
 - Every Admin2 endpoint requires the `api.gdrive.manage` permission.
 
 Keep your web server refusing `user/data/` (Grav's shipped Apache, nginx,
