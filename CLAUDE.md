@@ -144,6 +144,10 @@ Machine- and deployment-specific notes (hosts, ssh aliases) go in
 - GitHub release from that tag: title `X.Y.Z`, body = the CHANGELOG entry
   without its two heading lines:
   `gh release create X.Y.Z --title X.Y.Z --notes-file <body>`.
+- Publishing the release triggers `.github/workflows/release-asset.yml`, which
+  attaches `gdrive-auth-X.Y.Z.zip` built with `git archive` (so `export-ignore`
+  applies). GPM installs that asset instead of the source zipball, and its
+  download count is the install count.
 
 ## Agent skills
 
