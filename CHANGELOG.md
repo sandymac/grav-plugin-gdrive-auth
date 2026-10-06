@@ -1,3 +1,12 @@
+# v1.0.1
+## 2026-10-06
+
+1. [](#bugfix)
+    * Account names, OAuth states and Google Cloud project IDs are matched with PCRE's `D` modifier, so a value with a trailing newline is refused instead of slipping past `$` (noted in the GPM review, [getgrav/grav#4348](https://github.com/getgrav/grav/issues/4348)).
+1. [](#improved)
+    * The Accounts tab's Remove confirmation uses Admin2's dialog only; the `window.confirm` fallback is gone now that admin2 2.1.24+ is a declared dependency.
+    * The README and the OAuth guide say that the redirect URI follows `system.custom_base_url` when set and the current request otherwise, so sites behind a proxy or CDN know to set it.
+
 # v1.0.0
 ## 2026-10-06
 

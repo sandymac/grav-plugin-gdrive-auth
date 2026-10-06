@@ -48,6 +48,11 @@ upload credentials, **Test** and **Connect**. The same guides, readable here:
 3. [Service account guide](docs/setup/service-account.md)
 4. [Troubleshooting](docs/setup/troubleshooting.md), one entry per error code
 
+The redirect URI the guides show is built from `system.custom_base_url` when that
+is set, and from the current request's scheme and host otherwise. On a site
+behind a proxy or CDN, set `custom_base_url` so the address Google sees is stable
+and starts with `https://`.
+
 Managing accounts needs the **Manage Google Drive accounts** permission
 (`api.gdrive.manage`); API super users have it. The settings page is served by the
 api plugin and rendered by admin2 (both declared dependencies); the library
