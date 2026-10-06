@@ -12,7 +12,10 @@ Plugins that use it: [gdrive-images](https://github.com/sandymac/grav-plugin-gdr
 (photo galleries) and [gdrive-backup](https://github.com/sandymac/grav-plugin-gdrive-backup)
 (backups to Drive).
 
-Requires PHP 8.3+ and Grav 2.0.23+.
+Requires PHP 8.3+ and Grav 2.0.23+, plus the [api](https://github.com/getgrav/grav-plugin-api)
+and [admin2](https://github.com/getgrav/grav-plugin-admin2) plugins for the settings
+page (declared as dependencies, so GPM installs them). CI checks every change
+against Grav 2.0.23 with api 1.0.41 and Grav 2.2.4 with api 1.0.44.
 
 ## Installation
 
@@ -27,8 +30,8 @@ Any of the usual three ways:
   unzip it into `user/plugins/`, and rename the folder to `gdrive-auth`, so
   that `user/plugins/gdrive-auth/gdrive-auth.php` exists.
 
-No Composer step: the plugin has no dependencies beyond PHP's curl and openssl
-extensions, which Grav already requires.
+No Composer step: no PHP libraries beyond the curl and openssl extensions, which
+Grav already requires.
 
 ## Setup
 
@@ -46,9 +49,9 @@ upload credentials, **Test** and **Connect**. The same guides, readable here:
 4. [Troubleshooting](docs/setup/troubleshooting.md), one entry per error code
 
 Managing accounts needs the **Manage Google Drive accounts** permission
-(`api.gdrive.manage`); API super users have it. The settings page needs the
-[api](https://github.com/getgrav/grav-plugin-api) plugin (Admin2 uses it
-anyway); the library itself doesn't.
+(`api.gdrive.manage`); API super users have it. The settings page is served by the
+api plugin and rendered by admin2 (both declared dependencies); the library
+classes themselves need neither.
 
 The plugin is Google Drive Auth (`gdrive-auth`). Accounts are declared in `user/config/plugins/gdrive-auth.yaml`:
 

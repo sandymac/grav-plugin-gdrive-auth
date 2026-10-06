@@ -62,7 +62,7 @@ behaviour; the decisions in §1 are settled.
   nothing else may reference api classes. Success is `ApiResponse::create()`
   (`{data}`); `DriveException` becomes problem+json with `code` + `anchor`
   (built by hand, since `ErrorResponse` has no extra fields). PHPStan scans
-  `.gravtest/grav-admin/user/plugins/api/classes` (CI clones api 1.0.41 there).
+  `.gravtest/grav-admin/user/plugins/api/classes` (CI clones the pinned api releases there).
 - **Permission:** `api.gdrive.manage`. "Super" means `api.super`, not
   `admin.super`. Core doesn't load plugin `permissions.yaml`; the
   `PermissionsRegisterEvent` handler does. Demo accounts are blocked from every
